@@ -1,0 +1,13 @@
+[requires]
+libpq/14.5
+nlohmann_json/3.11.2
+gtest/1.13.0
+cjson/1.7.18
+unity/2.6.0
+
+[generators]
+CMakeDeps
+CMakeToolchain
+
+[layout]
+cmake_layout
