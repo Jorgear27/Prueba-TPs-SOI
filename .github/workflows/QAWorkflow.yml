@@ -42,3 +42,6 @@ jobs:
 
       - name: Run tests and coverage
         uses: ./.github/actions/coverage_and_test
+
+      - name: Run Valgrind on tests
+        uses: ./.github/actions/valgrind_check
