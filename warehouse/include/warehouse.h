@@ -15,6 +15,7 @@
 #include "inventory.h"
 #include <arpa/inet.h>
 #include <cjson/cJSON.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stddef.h>
 #include <stdio.h>

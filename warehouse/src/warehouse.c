@@ -33,17 +33,8 @@ int connect_wh_to_server()
     printf("Connected to server at %s:%d\n", SERVER_IP, SERVER_PORT);
 
     int flags = fcntl(sock, F_GETFL, 0);
-    if (flags == -1)
-    {
-        perror("[ERROR] Failed to get socket flags");
-        return -1;
-    }
 
-    if (fcntl(sock, F_SETFL, flags | O_NONBLOCK) == -1)
-    {
-        perror("[ERROR] Failed to set socket to non-blocking mode");
-        return -1;
-    }
+    fcntl(sock, F_SETFL, flags | O_NONBLOCK);
 
     return sock;
 }
@@ -52,12 +43,6 @@ void disconnect_wh_from_server(int sock, const char* warehouse_id)
 {
     // Create a JSON object for disconnect request
     cJSON* json = cJSON_CreateObject();
-    if (json == NULL)
-    {
-        perror("Failed to create JSON object");
-        close(sock);
-        return;
-    }
 
     // Generate a timestamp
     char timestamp[MAX_TIMESTAMP_LENGTH];
@@ -70,19 +55,9 @@ void disconnect_wh_from_server(int sock, const char* warehouse_id)
 
     // Convert JSON object to string
     char* disconnect_message = cJSON_PrintUnformatted(json);
-    if (disconnect_message == NULL)
-    {
-        perror("Failed to print JSON object");
-        cJSON_Delete(json);
-        close(sock);
-        return;
-    }
 
     // Send disconnect message to server
-    if (send_message_from_wh(sock, disconnect_message) < 0)
-    {
-        perror("Failed to send disconnect message");
-    }
+    send_message_from_wh(sock, disconnect_message);
 
     // Free the JSON string and object
     free(disconnect_message);
@@ -91,15 +66,26 @@ void disconnect_wh_from_server(int sock, const char* warehouse_id)
     // Close the socket
     close(sock);
     printf("Disconnected from server\n");
-    exit(0);
 }
 
 int send_message_from_wh(int sock, const char* message)
 {
+    if (sock < 0 || message == NULL)
+    {
+        errno = EBADF;
+        return -1;
+    }
+
     return send(sock, message, strlen(message), 0);
 }
 
 int receive_message_wh(int sock, char* buffer, size_t buffer_size)
 {
+    if (sock < 0 || buffer == NULL || buffer_size == 0)
+    {
+        errno = EBADF;
+        return -1;
+    }
+
     return recv(sock, buffer, buffer_size - 1, 0);
 }

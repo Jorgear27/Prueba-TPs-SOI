@@ -48,3 +48,6 @@ build/
 # Specific
 CMakeUserPresets.json
 .pre-commit-config.yaml
+
+# Coverage directory
+coverage/
