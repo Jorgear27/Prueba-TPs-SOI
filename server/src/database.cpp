@@ -1,11 +1,10 @@
 #include "database.hpp"
 
 // Constructor
-Database::Database()
+Database::Database(const std::string& connectionString)
 {
     // Connect to the database using the connection string
-    conn = PQconnectdb(DB_INFO);
-
+    conn = PQconnectdb(connectionString.c_str());
     // Check if the connection was successful
     if (PQstatus(conn) != CONNECTION_OK)
     {
@@ -49,13 +48,13 @@ void Database::disconnect()
 }
 
 // Singleton: return the instance of the Database class
-Database& Database::getInstance()
+Database& Database::getInstance(const std::string& connectionString)
 {
-    static Database instance;
+    static Database instance(connectionString);
     return instance;
 }
 
-PGconn* Database::getConnection()
+PGconn* Database::getConnection(const std::string& connectionString)
 {
     if (is_connected())
     {
@@ -69,7 +68,7 @@ PGconn* Database::getConnection()
     disconnect(); // Close the existing connection if any
 
     // Reconnect to the database
-    conn = PQconnectdb(DB_INFO);
+    conn = PQconnectdb(connectionString.c_str());
 
     if (PQstatus(conn) != CONNECTION_OK)
     {

@@ -28,10 +28,11 @@ class Database
 {
   public:
     /**
-     * @brief Constructs a Database object and establishes a connection.
+     * @brief Construct a new Database object
      *
+     * @param connectionString
      */
-    Database();
+    Database(const std::string& connectionString = DB_INFO);
 
     /**
      * @brief Destroys the Database object and disconnects from the database.
@@ -55,9 +56,11 @@ class Database
      *
      * This method provides access to a single instance of the Database class for use across all layers.
      *
+     * @param connectionString The connection string for the PostgreSQL database.
+     *
      * @return Database& Reference to the singleton Database instance.
      */
-    static Database& getInstance();
+    static Database& getInstance(const std::string& connectionString = DB_INFO);
 
     /**
      * @brief Get the PostgreSQL connection object.
@@ -65,9 +68,11 @@ class Database
      * This method provides access to the underlying `PGconn*` object used for
      * interacting with the PostgreSQL database.
      *
+     * @param connectionString The connection string for the PostgreSQL database.
+     *
      * @return PGconn* Pointer to the PostgreSQL connection object.
      */
-    PGconn* getConnection();
+    PGconn* getConnection(const std::string& connectionString = DB_INFO);
 
   private:
     /**

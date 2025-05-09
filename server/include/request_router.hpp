@@ -60,7 +60,6 @@ class RequestRouter
         OrderStatusQuery,  // Hub -> server
         CancelOrder,       // Hub -> server
         DisconnectRequest, // H/W -> server
-        TrialMessage,      // Wh -> server
         Unknown
     };
 
@@ -77,7 +76,6 @@ class RequestRouter
         {"delivery_update", RequestType::DeliveryUpdate},
         {"disconnect_request", RequestType::DisconnectRequest},
         {"order_status", RequestType::OrderStatusQuery},
-        {"trial_message", RequestType::TrialMessage},
         {"cancel_order", RequestType::CancelOrder}};
 };
 

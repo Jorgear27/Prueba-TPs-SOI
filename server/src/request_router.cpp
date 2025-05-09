@@ -66,16 +66,6 @@ std::string RequestRouter::routeRequest(const std::string& jsonStr, int sock)
             OrderManager orderManager;
             return orderManager.handleCancelation(jsonStr);
         }
-        case RequestType::TrialMessage: {
-            // Handle trial message
-            printf("I am about to send a message\n");
-            // Extract client ID and message from the JSON
-            std::string clientId = req.at("hub_id");
-            std::string message = req.at("message");
-            // Send the message to the client
-            Sender::getInstance().sendMessageToClient(clientId, jsonStr);
-            return json{{"status", "success"}, {"message", "Trial message received"}}.dump();
-        }
         default:
             return json{{"status", "unknown request"}}.dump();
         }

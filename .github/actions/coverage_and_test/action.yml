@@ -15,14 +15,15 @@ runs:
         # run tests built with cmake
         # --output-on-faileure: prints everythin outputted by the tests if it fails
         # -VV verbose output
-        CTEST_COMMAND=$(ctest --test-dir build/hub/tests --output-on-failure -VV 2> $CTEST_ERROR_FILE_FLAG 1>$ERROR_FILE_FLAG)
-        CTEST_COMMAND=$(ctest --test-dir build/warehouse/tests --output-on-failure -VV 2> $CTEST_ERROR_FILE_FLAG 1>$ERROR_FILE_FLAG)
+        CTEST_COMMAND=$(ctest --test-dir build/hub/tests --output-on-failure -VV 2>> $CTEST_ERROR_FILE_FLAG 1>>$ERROR_FILE_FLAG)
+        CTEST_COMMAND=$(ctest --test-dir build/warehouse/tests --output-on-failure -VV 2>> $CTEST_ERROR_FILE_FLAG 1>>$ERROR_FILE_FLAG)
+        CTEST_COMMAND=$(ctest --test-dir build/server/tests --output-on-failure -VV 2>> $CTEST_ERROR_FILE_FLAG 1>>$ERROR_FILE_FLAG)
 
         if [ -s $CTEST_ERROR_FILE_FLAG ]; then
           echo "Error: Unit Tests Failed"
           exit 1
         else
-          echo "All tests where passed!"
+          echo "All tests were passed!"
         fi
 
         # run coverage of those tests and oputput to file

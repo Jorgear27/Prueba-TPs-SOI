@@ -8,7 +8,7 @@ void InventoryManager::handleInventoryUpdate(const std::string& jsonData)
         json message = json::parse(jsonData);
 
         // Extract fields
-        std::string userId = message.at("warehouse_id");
+        std::string userId = message.at("user_id");
         auto inventoryList = message.at("inventory");
 
         PGconn* conn = Database::getInstance().getConnection();
@@ -63,7 +63,7 @@ void InventoryManager::handleRestockNotice(const std::string& jsonData)
         json message = json::parse(jsonData);
 
         // Extract fields
-        std::string userId = message.at("warehouse_id");
+        std::string userId = message.at("user_id");
         int itemType = message.at("item_type");
         int stockLevel = message.at("stock_level");
 
