@@ -33,7 +33,9 @@
  * @param sock
  * @param order_id
  * @param items_shipped
+ *
+ * @return 0 on success, -1 on failure.
  */
-void send_orderdispatch_to_server(int sock, const char* order_id, const char* items_shipped);
+int send_orderdispatch_to_server(int sock, const char* order_id, const char* items_shipped);
 
 #endif // ORDERS_H

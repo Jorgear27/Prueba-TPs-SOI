@@ -1,14 +1,14 @@
 #include "orders.h"
 #include "inventory.h"
 
-void send_orderdispatch_to_server(int sock, const char* order_id, const char* items_needed)
+int send_orderdispatch_to_server(int sock, const char* order_id, const char* items_needed)
 {
     // Create the JSON object for the response
     cJSON* response = cJSON_CreateObject();
     if (response == NULL)
     {
         printf("[ERROR] Failed to create JSON object for response.\n");
-        return;
+        return -1;
     }
 
     // Add fields to the JSON object
@@ -27,7 +27,7 @@ void send_orderdispatch_to_server(int sock, const char* order_id, const char* it
     {
         printf("[ERROR] Invalid items_needed format. Failed to parse JSON.\n");
         cJSON_Delete(response);
-        return;
+        return -1;
     }
 
     // Add the items_needed array to the JSON object
@@ -39,13 +39,14 @@ void send_orderdispatch_to_server(int sock, const char* order_id, const char* it
     {
         printf("[ERROR] Failed to serialize JSON object.\n");
         cJSON_Delete(response);
-        return;
+        return -1;
     }
 
     // Send the JSON string to the server
-    if (send(sock, json_string, strlen(json_string), 0) < 0)
+    if (send_message_from_wh(sock, json_string) < 0)
     {
         perror("[ERROR] Failed to send inventory to server");
+        return -1;
     }
     else
     {
@@ -55,4 +56,6 @@ void send_orderdispatch_to_server(int sock, const char* order_id, const char* it
     // Clean up
     free(json_string);
     cJSON_Delete(response);
+
+    return 0; // Success
 }

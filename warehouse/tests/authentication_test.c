@@ -10,11 +10,26 @@
 #define LATITUDE 37
 #define LONGITUDE -122
 
+void setUp(void);
+void tearDown(void);
 void test_create_client_info(void);
 void test_create_client_info_fail(void);
+int main(void);
 
+void setUp(void)
+{
+    // Setup code before each test
+}
+
+void tearDown(void)
+{
+    // Cleanup code after each test
+}
+
+// Test case for create_client_info_warehouse
 void test_create_client_info()
 {
+    printf("Testing create_client_info_warehouse...\n");
     char* client_info = create_client_info_warehouse(WH_ID, LATITUDE, LONGITUDE);
 
     // Parse the JSON result
@@ -45,14 +60,16 @@ void test_create_client_info()
     TEST_ASSERT_TRUE(cJSON_IsNumber(longitude_json));
     TEST_ASSERT_EQUAL_INT(LONGITUDE, longitude_json->valueint);
 
-    printf("Generated client info JSON: %s\n", client_info);
+    printf("Client Info: %s\n", client_info);
 
     cJSON_Delete(json_obj);
     free(client_info);
 }
 
+// Test case for create_client_info_warehouse with invalid warehouse ID
 void test_create_client_info_fail()
 {
+    printf("Testing create_client_info_warehouse with invalid warehouse ID...\n");
     char* client_info = create_client_info_warehouse(WH_FAIL, LATITUDE, LONGITUDE);
 
     // Parse the JSON result
@@ -63,4 +80,12 @@ void test_create_client_info_fail()
     // Clean up
     cJSON_Delete(json_obj);
     free(client_info);
+}
+
+int main(void)
+{
+    UNITY_BEGIN();
+    RUN_TEST(test_create_client_info);
+    RUN_TEST(test_create_client_info_fail);
+    return UNITY_END();
 }

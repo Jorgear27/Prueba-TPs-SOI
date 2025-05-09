@@ -109,7 +109,11 @@ void free_inventory()
 void send_inventory_to_server(int sock, const char* wh_id)
 {
     Inventory* inventory = get_inventory();
-
+    if (wh_id == NULL)
+    {
+        printf("[ERROR] Warehouse ID is NULL. Cannot send inventory to server.\n");
+        return;
+    }
     // Create the root JSON object
     cJSON* root = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "type", "inventory_update");
@@ -142,7 +146,7 @@ void send_inventory_to_server(int sock, const char* wh_id)
     char* json_string = cJSON_PrintUnformatted(root);
 
     // Send the JSON string to the server
-    if (send(sock, json_string, strlen(json_string), 0) < 0)
+    if (send_message_from_wh(sock, json_string) < 0)
     {
         perror("[ERROR] Failed to send inventory to server");
     }
@@ -176,7 +180,7 @@ void send_restock_to_server(int sock, const char* wh_id, int item_type)
     char* json_string = cJSON_PrintUnformatted(root);
 
     // Send the JSON string to the server
-    if (send(sock, json_string, strlen(json_string), 0) < 0)
+    if (send_message_from_wh(sock, json_string) < 0)
     {
         perror("[ERROR] Failed to send restock notice to server");
     }

@@ -1,5 +1,10 @@
 #include "listener.h"
 
+#ifdef TESTING
+int test_status = 0;                 // Global variable to track test status
+static int test_iteration_count = 0; // Counter for test iterations
+#endif
+
 void* listen_for_request(void* arg)
 {
     ThreadArgs* args = (ThreadArgs*)arg;
@@ -12,15 +17,20 @@ void* listen_for_request(void* arg)
         memset(buffer, 0, sizeof(buffer));
 
         // Receive messages from the server
-        int bytes_received = recv(sock, buffer, sizeof(buffer) - 1, 0);
+        int bytes_received = receive_message_wh(sock, buffer, sizeof(buffer));
         if (bytes_received <= 0)
         {
             if (errno == EAGAIN || errno == EWOULDBLOCK)
             {
                 // No data available, continue the loop
-                usleep(100000); // Sleep for 100ms to avoid busy-waiting
+                sleep(100000); // Sleep for 100ms to avoid busy-waiting
                 continue;
             }
+
+#ifdef TESTING
+            test_status = -1; // Set test status to indicate failure
+#endif
+
             perror("[ERROR] Failed to receive message from server");
             break;
             if (bytes_received == 0)
@@ -40,7 +50,18 @@ void* listen_for_request(void* arg)
         cJSON* json = cJSON_Parse(buffer);
         if (json == NULL)
         {
+#ifdef TESTING
+            test_status = -2; // Set test status to indicate failure
+#endif
             printf("[ERROR] Failed to parse JSON message.\n");
+
+#ifdef TESTING
+            if (++test_iteration_count >= 3)
+            {
+                test_iteration_count = 0; // Reset for next test
+                break;
+            }
+#endif
             continue;
         }
 
@@ -48,6 +69,10 @@ void* listen_for_request(void* arg)
         cJSON* type = cJSON_GetObjectItemCaseSensitive(json, "type");
         if (cJSON_IsString(type) && strcmp(type->valuestring, "supply_request") == 0)
         {
+#ifdef TESTING
+            test_status = 0; // Set test status to indicate success
+#endif
+
             printf("[SUPPLY REQUEST]\n");
 
             // Extract fields from the JSON object
@@ -94,7 +119,15 @@ void* listen_for_request(void* arg)
                 else
                 {
                     // Send a response back to the server
-                    send_orderdispatch_to_server(sock, order_id->valuestring, items_needed_string);
+                    if (send_orderdispatch_to_server(sock, order_id->valuestring, items_needed_string) < 0)
+                    {
+                        printf("[ERROR] Failed to send order dispatch to server.\n");
+                    }
+                    else
+                    {
+                        printf("[INFO] Order dispatch sent to server: %s\n", items_needed_string);
+                    }
+
                     free(items_needed_string); // Free the serialized string after use
                 }
 
@@ -104,6 +137,9 @@ void* listen_for_request(void* arg)
             else
             {
                 printf("[ERROR] Invalid order update format.\n");
+#ifdef TESTING
+                test_status = -3; // Set test status to indicate failure
+#endif
             }
         }
         else
@@ -112,6 +148,14 @@ void* listen_for_request(void* arg)
         }
         // Clean up the JSON object
         cJSON_Delete(json);
+#ifdef TESTING
+        // Exit the loop after 3 iterations for testing
+        if (++test_iteration_count >= 3)
+        {
+            test_iteration_count = 0; // Reset for next test
+            break;
+        }
+#endif
     }
 
     return NULL;

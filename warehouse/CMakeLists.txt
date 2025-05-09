@@ -29,22 +29,8 @@ set(SOURCES
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_link_libraries(${PROJECT_NAME} PRIVATE cjson::cjson unity::unity)
 
-#Agregar los archivos fuente de las pruebas
-add_executable(warehouse_tests
-    tests/authentication_test.c
-#    tests/warehouse_test.c
-    tests/inventory_test.c
-    tests/main.c
-#    tests/listener_test.c
-#    tests/orders_test.c
-    src/authentication.c
-    src/warehouse.c
-    src/inventory.c
-    src/listener.c
-    src/orders.c
-)
-
-target_include_directories(warehouse_tests PRIVATE tests/include)
-
-# Link dependencies
-target_link_libraries(warehouse_tests PRIVATE cjson::cjson unity::unity)
+# Add tests
+if (RUN_COVERAGE)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

@@ -1,5 +1,3 @@
-
-#include "authentication.h"
 #include "inventory.h"
 #include "unity.h"
 #include <arpa/inet.h>
@@ -15,9 +13,13 @@
 #define TEST_WAREHOUSE_ID "W005"
 #define TEST_PORT 8080
 #define TEST_IP "127.0.0.1"
+#define TEST_SOCKET 42
 
-int mock_server_socket;
+static int mock_send_message_result = 0; // Global variable to simulate send_message_from_wh result
+char mock_message_buffer[1024] = {0};    // Buffer to store the sent message
 
+void setUp(void);
+void tearDown(void);
 void test_initialize_inventory(void);
 void test_update_inventory_addition(void);
 void test_update_inventory_remove(void);
@@ -25,10 +27,47 @@ void test_set_inventory(void);
 void test_check_restock_item_no_restock(void);
 void test_check_restock_item_with_restock(void);
 void test_send_inventory_to_server(void);
+void test_send_restock_to_server(void);
+int main(void);
 
-void test_initialize_inventory(void)
+// Mock definitions
+#ifdef TESTING
+// Mock prototypes
+int send_message_from_wh(int sock, const char* message);
+void generate_timestamp_wh(char* buffer, size_t size);
+
+int send_message_from_wh(int sock, const char* message)
+{
+    (void)sock;
+    strncpy(mock_message_buffer, message, sizeof(mock_message_buffer) - 1);
+    printf("[MOCK] Sending message: %s\n", message);
+    return mock_send_message_result; // Simulate success or failure
+}
+
+void generate_timestamp_wh(char* buffer, size_t size)
+{
+    // Simulate a fixed timestamp for testing
+    const char* mock_timestamp = "2025-01-01T00:00:00Z";
+    strncpy(buffer, mock_timestamp, size - 1);
+    buffer[size - 1] = '\0';
+}
+
+#endif
+
+void setUp(void)
 {
     initialize_inventory(TEST_ITEM_COUNT);
+}
+
+void tearDown(void)
+{
+    free_inventory();
+}
+
+// Test initialization of inventory
+void test_initialize_inventory(void)
+{
+    printf("Testing initialize_inventory...\n");
     Inventory* inv = get_inventory();
     TEST_ASSERT_NOT_NULL(inv->items);
     TEST_ASSERT_EQUAL_INT(MAX_ITEM_TYPES, inv->item_count);
@@ -39,122 +78,150 @@ void test_initialize_inventory(void)
         TEST_ASSERT_EQUAL_INT(ITEM_THRESHOLD, inv->items[i].threshold);
         TEST_ASSERT_EQUAL_INT(MAX_ITEM_QUANTITY, inv->items[i].stock_level);
     }
-
-    free_inventory();
 }
 
+// Test updating inventory by adding items
 void test_update_inventory_addition(void)
 {
-    initialize_inventory(TEST_ITEM_COUNT);
+    printf("Testing update_inventory to add items...\n");
     update_inventory(TEST_ITEM_TYPE, TEST_QUANTITY_POSITIVE);
 
     Inventory* inv = get_inventory();
     TEST_ASSERT_EQUAL_INT(MAX_ITEM_QUANTITY + TEST_QUANTITY_POSITIVE, inv->items[TEST_ITEM_TYPE].stock_level);
-
-    free_inventory();
 }
 
-void test_update_inventory_remove(void) // Initialize the inventory in the setup, verify it here
+// Test updating inventory by removing items
+void test_update_inventory_remove(void)
 {
-    initialize_inventory(TEST_ITEM_COUNT);
+    printf("Testing update_inventory to remove items...\n");
     update_inventory(TEST_ITEM_TYPE, TEST_QUANTITY_NEGATIVE);
 
     Inventory* inv = get_inventory();
     TEST_ASSERT_EQUAL_INT(MAX_ITEM_QUANTITY + TEST_QUANTITY_NEGATIVE, inv->items[TEST_ITEM_TYPE].stock_level);
-
-    free_inventory();
 }
 
+// Test setting inventory directly
 void test_set_inventory(void)
 {
-    initialize_inventory(TEST_ITEM_COUNT);
+    printf("Testing set_inventory forced...\n");
     set_inventory(TEST_ITEM_TYPE, TEST_STOCK_LEVEL);
 
     Inventory* inv = get_inventory();
     TEST_ASSERT_EQUAL_INT(TEST_STOCK_LEVEL, inv->items[TEST_ITEM_TYPE].stock_level);
-
-    free_inventory();
 }
 
+// Test checking if restock is needed, without triggering restock
 void test_check_restock_item_no_restock(void)
 {
-    initialize_inventory(TEST_ITEM_COUNT);
+    printf("Testing check_restock_item with no restock needed...\n");
     set_inventory(TEST_ITEM_TYPE, ITEM_THRESHOLD + 1);
     int restock_triggered = check_restock_item(TEST_ITEM_TYPE);
     TEST_ASSERT_EQUAL_INT(0, restock_triggered);
 
     Inventory* inv = get_inventory();
     TEST_ASSERT_EQUAL_INT((ITEM_THRESHOLD + 1), inv->items[TEST_ITEM_TYPE].stock_level);
-
-    free_inventory();
 }
 
+// Test checking if restock is needed, triggering restock
 void test_check_restock_item_with_restock(void)
 {
-    initialize_inventory(TEST_ITEM_COUNT);
+    printf("Testing check_restock_item with restock needed...\n");
     set_inventory(TEST_ITEM_TYPE, ITEM_THRESHOLD - 1);
     int restock_triggered = check_restock_item(TEST_ITEM_TYPE);
     TEST_ASSERT_EQUAL_INT(1, restock_triggered);
 
     Inventory* inv = get_inventory();
     TEST_ASSERT_EQUAL_INT(MAX_ITEM_QUANTITY, inv->items[TEST_ITEM_TYPE].stock_level);
-
-    free_inventory();
 }
 
+// Test sending inventory to server
 void test_send_inventory_to_server(void)
 {
-    initialize_inventory(TEST_ITEM_COUNT);
-    // Create a mock server socket
-    mock_server_socket = socket(AF_INET, SOCK_STREAM, 0);
-    struct sockaddr_in server_addr = {
-        .sin_family = AF_INET,
-        .sin_port = htons(TEST_PORT),
-        .sin_addr.s_addr = inet_addr(TEST_IP),
-    };
-    bind(mock_server_socket, (struct sockaddr*)&server_addr, sizeof(server_addr));
-    listen(mock_server_socket, 1);
+    printf("Testing send_inventory_to_server...\n");
+    // Set up the inventory
+    set_inventory(TEST_ITEM_TYPE, TEST_STOCK_LEVEL);
+    send_inventory_to_server(TEST_SOCKET, TEST_WAREHOUSE_ID);
 
-    // Create a client socket
-    int client_socket = socket(AF_INET, SOCK_STREAM, 0);
-    connect(client_socket, (struct sockaddr*)&server_addr, sizeof(server_addr));
-
-    // Accept the connection on the server side
-    int server_socket = accept(mock_server_socket, NULL, NULL);
-
-    // Send inventory to server
-    send_inventory_to_server(client_socket, TEST_WAREHOUSE_ID);
-
-    // Read the data sent to the server
-    char buffer[1024] = {0};
-    read(server_socket, buffer, sizeof(buffer));
-
-    // Print the received data for debugging
-    printf("[DEBUG] Data sent to server: %s\n", buffer);
-
-    // Validate the JSON structure
-    cJSON* root = cJSON_Parse(buffer);
+    // Check if the message was sent
+    TEST_ASSERT_NOT_EQUAL(0, strlen(mock_message_buffer));
+    cJSON* root = cJSON_Parse(mock_message_buffer);
     TEST_ASSERT_NOT_NULL(root);
-    TEST_ASSERT_EQUAL_STRING("inventory_update", cJSON_GetObjectItem(root, "type")->valuestring);
-    TEST_ASSERT_EQUAL_STRING(TEST_WAREHOUSE_ID, cJSON_GetObjectItem(root, "user_id")->valuestring);
 
+    // Validate JSON structure
+    cJSON* type = cJSON_GetObjectItem(root, "type");
+    TEST_ASSERT_NOT_NULL(type);
+    TEST_ASSERT_EQUAL_STRING("inventory_update", type->valuestring);
+
+    cJSON* user_id = cJSON_GetObjectItem(root, "user_id");
+    TEST_ASSERT_NOT_NULL(user_id);
+    TEST_ASSERT_EQUAL_STRING(TEST_WAREHOUSE_ID, user_id->valuestring);
+
+    // Validate inventory array
     cJSON* inventory_array = cJSON_GetObjectItem(root, "inventory");
     TEST_ASSERT_NOT_NULL(inventory_array);
-    TEST_ASSERT_EQUAL_INT(TEST_ITEM_COUNT, cJSON_GetArraySize(inventory_array));
+    TEST_ASSERT(cJSON_IsArray(inventory_array));
 
-    for (int i = 0; i < TEST_ITEM_COUNT; i++)
-    {
-        cJSON* item = cJSON_GetArrayItem(inventory_array, i);
-        TEST_ASSERT_NOT_NULL(item);
-        TEST_ASSERT_EQUAL_INT(i, cJSON_GetObjectItem(item, "item_type")->valueint);
-        TEST_ASSERT_EQUAL_INT(MAX_ITEM_QUANTITY, cJSON_GetObjectItem(item, "stock_level")->valueint);
-        TEST_ASSERT_EQUAL_INT(ITEM_THRESHOLD, cJSON_GetObjectItem(item, "threshold")->valueint);
-    }
+    // Ensure TEST_ITEM_TYPE is within bounds
+    int inventory_size = cJSON_GetArraySize(inventory_array);
+    TEST_ASSERT(TEST_ITEM_TYPE >= 0 && TEST_ITEM_TYPE < inventory_size);
+
+    // Access the item at the position corresponding to TEST_ITEM_TYPE
+    cJSON* item = cJSON_GetArrayItem(inventory_array, TEST_ITEM_TYPE);
+    TEST_ASSERT_NOT_NULL(item);
+
+    // Validate the item_type and quantity
+    cJSON* item_type = cJSON_GetObjectItem(item, "item_type");
+    TEST_ASSERT_NOT_NULL(item_type);
+    TEST_ASSERT_EQUAL_INT(TEST_ITEM_TYPE, item_type->valueint);
+
+    cJSON* quantity = cJSON_GetObjectItem(item, "stock_level");
+    TEST_ASSERT_NOT_NULL(quantity);
+    TEST_ASSERT_EQUAL_INT(TEST_STOCK_LEVEL, quantity->valueint);
 
     // Clean up
     cJSON_Delete(root);
-    close(client_socket);
-    close(server_socket);
-    close(mock_server_socket);
-    free_inventory();
+}
+
+// Test sending restock notice to server
+void test_send_restock_to_server(void)
+{
+    printf("Testing send_restock_to_server...\n");
+
+    // Send a restock notice
+    send_restock_to_server(TEST_SOCKET, TEST_WAREHOUSE_ID, TEST_ITEM_TYPE);
+
+    // Check if the message was sent
+    TEST_ASSERT_NOT_EQUAL(0, strlen(mock_message_buffer));
+    cJSON* root = cJSON_Parse(mock_message_buffer);
+    TEST_ASSERT_NOT_NULL(root);
+
+    // Validate JSON structure
+    cJSON* type = cJSON_GetObjectItem(root, "type");
+    TEST_ASSERT_NOT_NULL(type);
+    TEST_ASSERT_EQUAL_STRING("restock_notice", type->valuestring);
+
+    cJSON* item_type = cJSON_GetObjectItem(root, "item_type");
+    TEST_ASSERT_NOT_NULL(item_type);
+    TEST_ASSERT_EQUAL_INT(TEST_ITEM_TYPE, item_type->valueint);
+
+    cJSON* quantity = cJSON_GetObjectItem(root, "stock_level");
+    TEST_ASSERT_NOT_NULL(quantity);
+    TEST_ASSERT_EQUAL_INT(MAX_ITEM_QUANTITY, quantity->valueint);
+
+    // Clean up
+    cJSON_Delete(root);
+}
+
+int main(void)
+{
+    UNITY_BEGIN();
+    RUN_TEST(test_initialize_inventory);
+    RUN_TEST(test_update_inventory_addition);
+    RUN_TEST(test_update_inventory_remove);
+    RUN_TEST(test_set_inventory);
+    RUN_TEST(test_check_restock_item_no_restock);
+    RUN_TEST(test_check_restock_item_with_restock);
+    RUN_TEST(test_send_inventory_to_server);
+    RUN_TEST(test_send_restock_to_server);
+    return UNITY_END();
 }

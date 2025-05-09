@@ -38,6 +38,10 @@ venv/
 # build directory
 build/
 
+# log files
+*.log
+*_logs/
+
 # vscode
 *.vscode/
 
