@@ -25,6 +25,18 @@ class Sender
 {
   public:
     /**
+     * @brief Default constructor for the Sender class.
+     *
+     */
+    Sender() = default;
+
+    /**
+     * @brief Default destructor for the Sender class.
+     *
+     */
+    ~Sender() = default;
+
+    /**
      * @brief Add a new client connection to the registry.
      *
      * @param clientId
@@ -53,7 +65,7 @@ class Sender
      * @param jsonMessage
      * @return int Returns 0 on success, -1 on failure.
      */
-    int sendMessageToClient(const std::string& clientId, const std::string& jsonMessage);
+    virtual int sendMessageToClient(const std::string& clientId, const std::string& jsonMessage);
 
   private:
     /**

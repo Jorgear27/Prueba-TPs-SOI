@@ -114,3 +114,10 @@ std::string InventoryManager::findWarehouseForItem(int itemType, int quantityNee
     PQclear(res);
     return warehouseId;
 }
+
+// Singleton instance
+InventoryManager& InventoryManager::getInstance()
+{
+    static InventoryManager instance; // Guaranteed to be destroyed
+    return instance;                  // Instantiated on first use
+}

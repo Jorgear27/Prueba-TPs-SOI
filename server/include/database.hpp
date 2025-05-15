@@ -84,7 +84,7 @@ class Database
      * @param quantity The quantity of the item.
      * @return true if the operation was successful, false otherwise.
      */
-    bool insertOrUpdateOrder(const std::string& orderId, const std::string& hubId, int itemType, int quantity);
+    virtual bool insertOrUpdateOrder(const std::string& orderId, const std::string& hubId, int itemType, int quantity);
 
     /**
      * @brief Get the status of an order.
@@ -92,7 +92,7 @@ class Database
      * @param orderId The ID of the order.
      * @return std::string The status of the order.
      */
-    std::string getOrderStatus(const std::string& orderId);
+    virtual std::string getOrderStatus(const std::string& orderId);
 
     /**
      * @brief Update the status of an order.
@@ -101,7 +101,7 @@ class Database
      * @param newStatus The new status of the order.
      * @return true if the operation was successful, false otherwise.
      */
-    bool updateOrderStatus(const std::string& orderId, const std::string& newStatus);
+    virtual bool updateOrderStatus(const std::string& orderId, const std::string& newStatus);
 
     /**
      * @brief Retrieve details of an order.
@@ -109,14 +109,14 @@ class Database
      * @param orderId The ID of the order.
      * @return nlohmann::json JSON object with order details.
      */
-    nlohmann::json getOrderDetails(const std::string& orderId);
+    virtual nlohmann::json getOrderDetails(const std::string& orderId);
 
     /**
      * @brief Get a list of approved orders.
      *
      * @return std::vector<std::string> List of approved order IDs.
      */
-    std::vector<std::string> getApprovedOrders();
+    virtual std::vector<std::string> getApprovedOrders();
 
   private:
     /**
@@ -126,13 +126,6 @@ class Database
      * the `libpq` library to manage the database connection.
      */
     PGconn* conn;
-
-    /**
-     * @brief Private static instance for the singleton pattern.
-     *
-     * This ensures that only one instance of the Database class exists
-     */
-    static Database* instance;
 };
 
 #endif

@@ -24,12 +24,7 @@ int connect_wh_to_server()
     }
 
     // Connect to the server
-    if (connect(sock, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0)
-    {
-        perror("Connection to the server failed");
-        close(sock);
-        return -1;
-    }
+    connect(sock, (struct sockaddr*)&server_addr, sizeof(server_addr));
     printf("Connected to server at %s:%d\n", SERVER_IP, SERVER_PORT);
 
     int flags = fcntl(sock, F_GETFL, 0);

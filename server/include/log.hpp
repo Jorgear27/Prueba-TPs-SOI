@@ -42,9 +42,8 @@ class Logger
      * @param component The component generating the log (e.g., "Authentication", "Inventory").
      * @param message The message to be logged.
      */
-    void log(const std::string& component, const std::string& message);
+    virtual void log(const std::string& component, const std::string& message);
 
-  private:
     /**
      * @brief Private constructor for singleton pattern.
      */
@@ -55,6 +54,7 @@ class Logger
      */
     ~Logger();
 
+  private:
     // Delete copy constructor and assignment operator
     Logger(const Logger&) = delete;
     Logger& operator=(const Logger&) = delete;

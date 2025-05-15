@@ -25,25 +25,25 @@ void OrderManager::handleNewOrder(const std::string& jsonData)
             int itemType = item.at("item_type");
             int quantityRequest = item.at("quantity");
 
-            if (!Database::getInstance().insertOrUpdateOrder(orderId, hubId, itemType, quantityRequest))
+            if (!database.insertOrUpdateOrder(orderId, hubId, itemType, quantityRequest))
             {
-                Logger::getInstance().log("OrderManager", "Error inserting/updating order.");
+                logger.log("OrderManager", "[ERROR] Failed to insert/update order in DB.");
                 std::cerr << "[ERROR] Failed to insert/update order.\n";
                 return;
             }
         }
 
         // Launch a separate thread to handle the status update
-        std::thread([orderId]() {
+        std::thread([this, orderId]() {
             try
             {
                 // Sleep for 30 seconds (cancellation window)
                 std::this_thread::sleep_for(std::chrono::seconds(30));
-                std::string status = Database::getInstance().getOrderStatus(orderId);
+                std::string status = database.getOrderStatus(orderId);
 
                 if (status == "Pending")
                 {
-                    Database::getInstance().updateOrderStatus(orderId, "Approved");
+                    database.updateOrderStatus(orderId, "Approved");
                     std::cout << "[INFO] Order " << orderId << " status updated to 'Approved'.\n";
                 }
             }
@@ -53,12 +53,12 @@ void OrderManager::handleNewOrder(const std::string& jsonData)
             }
         }).detach(); // Detach the thread to allow it to run independently
 
-        Logger::getInstance().log("OrderManager", "New order added for user: " + hubId);
+        logger.log("OrderManager", "[INFO] New order added for user: " + hubId);
     }
     catch (const std::exception& e)
     {
-        Logger::getInstance().log("OrderManager", "Error creating order: " + std::string(e.what()));
-        std::cerr << "[Order] Failed to process supply request: " << e.what() << "\n";
+        logger.log("OrderManager", "[ERROR] Exception occurred while handling new order: " + std::string(e.what()));
+        std::cerr << "[ERROR] Failed to handle new order: " << e.what() << "\n";
         return;
     }
 }
@@ -70,7 +70,7 @@ void OrderManager::processApprovedOrders()
         try
         {
             // Query the database for orders with status "Approved"
-            std::vector<std::string> approvedOrders = Database::getInstance().getApprovedOrders();
+            std::vector<std::string> approvedOrders = database.getApprovedOrders();
 
             for (const auto& orderId : approvedOrders)
             {
@@ -92,12 +92,12 @@ void OrderManager::processApprovedOrders()
                 // Update the order status to "Requested"
                 updateOrderStatus(orderId, "Requested");
 
-                Logger::getInstance().log("OrderManager", "Processed approved order: " + orderId);
+                logger.log("OrderManager", "[INFO] Order " + orderId + " processed and supply request sent.");
             }
         }
         catch (const std::exception& e)
         {
-            Logger::getInstance().log("OrderManager", "Error processing approved orders: " + std::string(e.what()));
+            logger.log("OrderManager", "[ERROR] Exception in processApprovedOrders: " + std::string(e.what()));
         }
 
         // Wait for 10 seconds before checking for new approved orders
@@ -133,18 +133,16 @@ std::string OrderManager::supplyRequest(const std::string orderId, const std::ve
             int quantityNeeded = item.second;
 
             // Ask InventoryManager for a warehouse that can fulfill the request
-            InventoryManager inventoryManager; // Use InventoryManager to query inventory
             std::string warehouseId = inventoryManager.findWarehouseForItem(itemType, quantityNeeded);
             if (!warehouseId.empty())
             {
-                if (Sender::getInstance().sendMessageToClient(warehouseId, supplyRequest.dump()) != -1)
+                if (sender.sendMessageToClient(warehouseId, supplyRequest.dump()) != -1)
                 {
                     printf("[INFO] Supply request sent to warehouse: %s\n", warehouseId.c_str());
                     // Log the operation
-                    Logger::getInstance().log("OrderManager",
-                                              "[ORDER] Fulfilled request for item_type: " + std::to_string(itemType) +
-                                                  ", quantity: " + std::to_string(quantityNeeded) +
-                                                  " from warehouse: " + warehouseId);
+                    logger.log("OrderManager", "[ORDER] Fulfilled request for item_type: " + std::to_string(itemType) +
+                                                   ", quantity: " + std::to_string(quantityNeeded) +
+                                                   " from warehouse: " + warehouseId);
                     std::cout << "[Order] Fulfilled request for item_type: " << itemType
                               << ", quantity: " << quantityNeeded << " from warehouse: " << warehouseId << "\n";
                     // Add the fulfilled item to the supply request JSON
@@ -154,15 +152,13 @@ std::string OrderManager::supplyRequest(const std::string orderId, const std::ve
                 }
                 else
                 {
-                    Logger::getInstance().log("OrderManager",
-                                              "[ERROR] Failed to send supply request to warehouse: " + warehouseId);
+                    logger.log("OrderManager", "[ERROR] Failed to send supply request to warehouse: " + warehouseId);
                 }
             }
             else
             {
-                Logger::getInstance().log("OrderManager",
-                                          "[ERROR] No warehouse found for item_type: " + std::to_string(itemType) +
-                                              ", quantity: " + std::to_string(quantityNeeded));
+                logger.log("OrderManager", "[ERROR] No warehouse found for item_type: " + std::to_string(itemType) +
+                                               ", quantity: " + std::to_string(quantityNeeded));
                 // Add the unfulfilled item to the supply request JSON
                 supplyRequest["items_needed"].push_back(
                     {{"item_type", itemType}, {"quantity", quantityNeeded}, {"fulfilled_by", "none"}});
@@ -172,8 +168,7 @@ std::string OrderManager::supplyRequest(const std::string orderId, const std::ve
     }
     catch (const std::exception& e)
     {
-        Logger::getInstance().log("OrderManager", " [ERROR] Exception in supplyRequest: " + std::string(e.what()));
-        std::cerr << "[ERROR] Failed to create supply request: " << e.what() << "\n";
+        logger.log("OrderManager", " [ERROR] Exception in supplyRequest: " + std::string(e.what()));
         return "{\"status\":\"error\",\"message\":\"Failed to process supply request\"}";
     }
 }
@@ -202,18 +197,16 @@ void OrderManager::handleOrderDispatch(const std::string& jsonData)
         std::string hubId = orderDetails.at("user_id");
 
         // Notify the hub about the order dispatch Sender sender;
-        if (Sender::getInstance().sendMessageToClient(hubId, orderDistribution.dump()) != -1)
+        if (sender.sendMessageToClient(hubId, orderDistribution.dump()) != -1)
         {
             // Log the operation
-            Logger::getInstance().log("OrderManager",
-                                      "[ORDER] Order dispatched: " + orderId + ", new status: " + status);
+            logger.log("OrderManager", "[ORDER] Order dispatched: " + orderId + ", new status: " + status);
             std::cout << "[ORDER] Order dispatched: " << orderId << ", new status: " << status << "\n";
         }
         else
         {
             // Log the error
-            Logger::getInstance().log("OrderManager",
-                                      "[ERROR] Failed to send order dispatch notification to hub: " + hubId);
+            logger.log("OrderManager", "[ERROR] Failed to send order dispatch notification to hub: " + hubId);
             std::cerr << "[ERROR] Failed to send order dispatch notification to hub.\n";
             return; // Exit early if sending fails
         }
@@ -225,7 +218,7 @@ void OrderManager::handleOrderDispatch(const std::string& jsonData)
     }
     catch (const std::exception& e)
     {
-        Logger::getInstance().log("OrderManager", "Error processing order dispatch: " + std::string(e.what()));
+        logger.log("OrderManager", "[ERROR] Exception in handleOrderDispatch: " + std::string(e.what()));
         std::cerr << "[ORDER] Failed to process order dispatch: " << e.what() << "\n";
         return;
     }
@@ -246,13 +239,6 @@ std::string OrderManager::handleCancelation(const std::string& jsonData)
         json response_details = json::parse(details);
         std::string status = response_details.at("status");
 
-        // Check if the order_id exists
-        if (status == "error")
-        {
-            std::cerr << "[ERROR] Order ID not found.\n";
-            return "{\"status\":\"error\",\"message\":\"Invalid client ID\"}"; // Exit early if order ID is not found
-        }
-
         if (status == "Pending")
         {
             std::string status = "Canceled";
@@ -261,18 +247,18 @@ std::string OrderManager::handleCancelation(const std::string& jsonData)
         else
         {
             std::cout << "[ERROR] The order was already approved, it cannot be canceled. \n";
-            Logger::getInstance().log("OrderManager", "The order was already approved, it cannot be canceled.");
+            logger.log("OrderManager", "[ERROR] The order was already approved, it cannot be canceled.");
             return "{\"status\":\"error\",\"message\":\"The order was already approved, it cannot be canceled\"}";
         }
 
         // Log the operation
-        Logger::getInstance().log("OrderManager", "Order canceled: " + orderId);
+        logger.log("OrderManager", "[ORDER] Order canceled: " + orderId);
         std::cout << "[ORDER] Order canceled: " << orderId << "\n";
         return "{\"status\":\"success\",\"message\":\"The order was canceled\"}";
     }
     catch (const std::exception& e)
     {
-        Logger::getInstance().log("OrderManager", "Error processing order cancelation: " + std::string(e.what()));
+        logger.log("OrderManager", "[ERROR] Exception in handleCancelation: " + std::string(e.what()));
         std::cerr << "[ORDER] Failed to process order cancelation: " << e.what() << "\n";
         return "{\"status\":\"error\",\"message\":\"Failed to process order cancelation\"}";
     }
@@ -314,7 +300,7 @@ std::string OrderManager::handleOrderStatusQuery(const std::string& jsonData)
     }
     catch (const std::exception& e)
     {
-        Logger::getInstance().log("OrderManager", "Error processing order status query: " + std::string(e.what()));
+        logger.log("OrderManager", "[ERROR] Exception in handleOrderStatusQuery: " + std::string(e.what()));
         std::cerr << "[ERROR] Failed to process order status query: " << e.what() << "\n";
         return json{{"status", "error"}, {"message", e.what()}}.dump();
     }
@@ -342,27 +328,27 @@ void OrderManager::deliveryUpdate(const std::string& jsonData)
         updateOrderStatus(orderId, status);
 
         // Log the operation
-        Logger::getInstance().log("OrderManager", "Order dispatched: " + orderId + ", new status: " + status);
+        logger.log("OrderManager",
+                   "[ORDER] Delivery update received for order: " + orderId + ", new status: " + status);
         return;
     }
     catch (const std::exception& e)
     {
-        Logger::getInstance().log("OrderManager", "Error processing delivery update: " + std::string(e.what()));
-        std::cerr << "[ORDER] Failed to process order dispatch: " << e.what() << "\n";
+        logger.log("OrderManager", "[ERROR] Exception in deliveryUpdate: " + std::string(e.what()));
         return;
     }
 }
 
 nlohmann::json OrderManager::getOrderDetails(const std::string& orderId)
 {
-    return Database::getInstance().getOrderDetails(orderId);
+    return database.getOrderDetails(orderId);
 }
 
 void OrderManager::updateOrderStatus(const std::string& orderId, const std::string& newStatus)
 {
-    if (!Database::getInstance().updateOrderStatus(orderId, newStatus))
+    if (!database.updateOrderStatus(orderId, newStatus))
     {
-        Logger::getInstance().log("OrderManager", "Failed to update order status for order: " + orderId);
+        logger.log("OrderManager", "Failed to update order status for order: " + orderId);
         std::cerr << "[ERROR] Failed to update order status for order: " << orderId << "\n";
     }
 }

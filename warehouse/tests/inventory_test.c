@@ -28,6 +28,8 @@ void test_check_restock_item_no_restock(void);
 void test_check_restock_item_with_restock(void);
 void test_send_inventory_to_server(void);
 void test_send_restock_to_server(void);
+void test_send_inventory_to_server_null_warehouse_id(void);
+void test_print_inventory(void);
 int main(void);
 
 // Mock definitions
@@ -182,6 +184,20 @@ void test_send_inventory_to_server(void)
     cJSON_Delete(root);
 }
 
+// Test sending inventory to server null warehouse ID
+void test_send_inventory_to_server_null_warehouse_id(void)
+{
+    // Clean mock message buffer
+    memset(mock_message_buffer, 0, sizeof(mock_message_buffer));
+
+    printf("Testing send_inventory_to_server with null warehouse ID...\n");
+    set_inventory(TEST_ITEM_TYPE, TEST_STOCK_LEVEL);
+    send_inventory_to_server(TEST_SOCKET, NULL);
+
+    // Check if the message was not sent
+    TEST_ASSERT_EQUAL(0, strlen(mock_message_buffer));
+}
+
 // Test sending restock notice to server
 void test_send_restock_to_server(void)
 {
@@ -212,6 +228,25 @@ void test_send_restock_to_server(void)
     cJSON_Delete(root);
 }
 
+// Test printing inventory
+void test_print_inventory(void)
+{
+    printf("Testing print_inventory...\n");
+    print_inventory();
+    Inventory* inv = get_inventory();
+    for (int i = 0; i < MAX_ITEM_TYPES; i++)
+    {
+        printf("Item Type: %d, Stock Level: %d\n", inv->items[i].item_type, inv->items[i].stock_level);
+    }
+    // Check if the inventory is printed correctly
+    for (int i = 0; i < MAX_ITEM_TYPES; i++)
+    {
+        TEST_ASSERT_EQUAL_INT(i, inv->items[i].item_type);
+        TEST_ASSERT_EQUAL_INT(MAX_ITEM_QUANTITY, inv->items[i].stock_level);
+    }
+    // Check if the inventory is printed correctly
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -223,5 +258,7 @@ int main(void)
     RUN_TEST(test_check_restock_item_with_restock);
     RUN_TEST(test_send_inventory_to_server);
     RUN_TEST(test_send_restock_to_server);
+    RUN_TEST(test_send_inventory_to_server_null_warehouse_id);
+    RUN_TEST(test_print_inventory);
     return UNITY_END();
 }

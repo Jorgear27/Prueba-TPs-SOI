@@ -37,6 +37,17 @@ class OrderManager
 {
   public:
     /**
+     * @brief Constructor with dependency injection
+     *
+     */
+    OrderManager(Database& db = Database::getInstance(), Logger& logger = Logger::getInstance(),
+                 Sender& sender = Sender::getInstance(),
+                 InventoryManager& inventoryManager = InventoryManager::getInstance())
+        : database(db), logger(logger), sender(sender), inventoryManager(inventoryManager)
+    {
+    }
+
+    /**
      * @brief Handle a new order request.
      *
      * @param jsonData JSON string containing the order request.
@@ -119,6 +130,12 @@ class OrderManager
      * @param message JSON object containing order details.
      */
     bool validateOrderUpdate(const json& message);
+
+  private:
+    Database& database;                 // Reference to the database instance
+    Logger& logger;                     // Reference to the logger instance
+    Sender& sender;                     // Reference to the sender instance
+    InventoryManager& inventoryManager; // Reference to the inventory manager instance
 };
 
 #endif

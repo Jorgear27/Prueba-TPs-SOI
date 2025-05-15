@@ -23,7 +23,7 @@ void* listen_for_request(void* arg)
             if (errno == EAGAIN || errno == EWOULDBLOCK)
             {
                 // No data available, continue the loop
-                sleep(100000); // Sleep for 100ms to avoid busy-waiting
+                sleep(1);
                 continue;
             }
 

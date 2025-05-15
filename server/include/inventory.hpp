@@ -73,11 +73,18 @@ class InventoryManager
      * @return std::string The ID of the warehouse that can fulfill the request, or an empty string if none is
      * available.
      */
-    std::string findWarehouseForItem(int itemType, int quantityNeeded);
+    virtual std::string findWarehouseForItem(int itemType, int quantityNeeded);
+
+    /**
+     * @brief Singleton instance of the InventoryManager class.
+     *
+     * @return InventoryManager& Reference to the singleton instance.
+     */
+    static InventoryManager& getInstance();
 
   private:
-    std::unordered_map<std::string, std::unordered_map<int, InventoryEntry>>
-        inventory; // user_id -> item_type -> InventoryEntry
+    std::unordered_map<std::string, std::unordered_map<int, InventoryEntry>> inventory; // user_id -> item_type ->
+                                                                                        // InventoryEntry
 };
 
 #endif

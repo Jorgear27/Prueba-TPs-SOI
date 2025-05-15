@@ -5,11 +5,6 @@ int send_orderdispatch_to_server(int sock, const char* order_id, const char* ite
 {
     // Create the JSON object for the response
     cJSON* response = cJSON_CreateObject();
-    if (response == NULL)
-    {
-        printf("[ERROR] Failed to create JSON object for response.\n");
-        return -1;
-    }
 
     // Add fields to the JSON object
     cJSON_AddStringToObject(response, "type", "order_dispatch");
@@ -35,12 +30,6 @@ int send_orderdispatch_to_server(int sock, const char* order_id, const char* ite
 
     // Serialize the JSON object to a string
     char* json_string = cJSON_PrintUnformatted(response);
-    if (json_string == NULL)
-    {
-        printf("[ERROR] Failed to serialize JSON object.\n");
-        cJSON_Delete(response);
-        return -1;
-    }
 
     // Send the JSON string to the server
     if (send_message_from_wh(sock, json_string) < 0)
