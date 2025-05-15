@@ -11,6 +11,7 @@
 #include <chrono>
 #include <iostream>
 #include <libpq-fe.h>
+#include <nlohmann/json.hpp>
 #include <thread>
 
 /**
@@ -73,6 +74,49 @@ class Database
      * @return PGconn* Pointer to the PostgreSQL connection object.
      */
     PGconn* getConnection(const std::string& connectionString = DB_INFO);
+
+    /**
+     * @brief Insert or update an order in the database.
+     *
+     * @param orderId The ID of the order.
+     * @param hubId The ID of the hub.
+     * @param itemType The type of the item.
+     * @param quantity The quantity of the item.
+     * @return true if the operation was successful, false otherwise.
+     */
+    bool insertOrUpdateOrder(const std::string& orderId, const std::string& hubId, int itemType, int quantity);
+
+    /**
+     * @brief Get the status of an order.
+     *
+     * @param orderId The ID of the order.
+     * @return std::string The status of the order.
+     */
+    std::string getOrderStatus(const std::string& orderId);
+
+    /**
+     * @brief Update the status of an order.
+     *
+     * @param orderId The ID of the order.
+     * @param newStatus The new status of the order.
+     * @return true if the operation was successful, false otherwise.
+     */
+    bool updateOrderStatus(const std::string& orderId, const std::string& newStatus);
+
+    /**
+     * @brief Retrieve details of an order.
+     *
+     * @param orderId The ID of the order.
+     * @return nlohmann::json JSON object with order details.
+     */
+    nlohmann::json getOrderDetails(const std::string& orderId);
+
+    /**
+     * @brief Get a list of approved orders.
+     *
+     * @return std::vector<std::string> List of approved order IDs.
+     */
+    std::vector<std::string> getApprovedOrders();
 
   private:
     /**

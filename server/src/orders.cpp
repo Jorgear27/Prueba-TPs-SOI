@@ -20,74 +20,30 @@ void OrderManager::handleNewOrder(const std::string& jsonData)
         auto orderItemsList = message.at("items_needed");
 
         // Add the new order to the database
-        PGconn* conn = Database::getInstance().getConnection();
         for (const auto& item : orderItemsList)
         {
             int itemType = item.at("item_type");
             int quantityRequest = item.at("quantity");
 
-            std::string query = "INSERT INTO orders (order_id, user_id, item_type, quantity, status) VALUES ('" +
-                                orderId + "', '" + hubId + "', " + std::to_string(itemType) + ", " +
-                                std::to_string(quantityRequest) +
-                                ", 'Pending') ON CONFLICT (order_id, item_type) DO UPDATE SET quantity = " +
-                                std::to_string(quantityRequest) + ", status = 'Pending';";
-
-            PGresult* res = PQexec(conn, query.c_str());
-            if (PQresultStatus(res) != PGRES_COMMAND_OK)
+            if (!Database::getInstance().insertOrUpdateOrder(orderId, hubId, itemType, quantityRequest))
             {
-                Logger::getInstance().log("OrderManager",
-                                          "Error inserting new order: " + std::string(PQerrorMessage(conn)));
-                std::cerr << "[ERROR] Failed to insert new order: " << std::string(PQerrorMessage(conn)) << "\n";
-                PQclear(res);
+                Logger::getInstance().log("OrderManager", "Error inserting/updating order.");
+                std::cerr << "[ERROR] Failed to insert/update order.\n";
                 return;
             }
-            PQclear(res);
         }
 
         // Launch a separate thread to handle the status update
         std::thread([orderId]() {
             try
             {
-                // Create a new database connection for the thread
-                PGconn* threadConn = Database::getInstance().getConnection();
-                if (threadConn == nullptr)
-                {
-                    std::cerr << "[ERROR] Thread failed to connect to the database.\n";
-                    return;
-                }
-
                 // Sleep for 30 seconds (cancellation window)
                 std::this_thread::sleep_for(std::chrono::seconds(30));
-
-                // Check the order status
-                std::string query =
-                    "SELECT status FROM orders WHERE order_id = '" + orderId + "' and status = 'Pending';";
-                PGresult* res = PQexec(threadConn, query.c_str());
-                if (PQresultStatus(res) != PGRES_TUPLES_OK)
-                {
-                    std::cerr << "[ERROR] Failed to get order status in thread: " << PQerrorMessage(threadConn) << "\n";
-                    PQclear(res);
-                    return;
-                }
-
-                std::string status = PQgetvalue(res, 0, 0);
-                PQclear(res);
+                std::string status = Database::getInstance().getOrderStatus(orderId);
 
                 if (status == "Pending")
                 {
-                    // Update the order status to "Approved"
-                    std::string updateQuery =
-                        "UPDATE orders SET status = 'Approved' WHERE order_id = '" + orderId + "';";
-                    PGresult* updateRes = PQexec(threadConn, updateQuery.c_str());
-                    if (PQresultStatus(updateRes) != PGRES_COMMAND_OK)
-                    {
-                        std::cerr << "[ERROR] Failed to update order status in thread: " << PQerrorMessage(threadConn)
-                                  << "\n";
-                        PQclear(updateRes);
-                        return;
-                    }
-                    PQclear(updateRes);
-
+                    Database::getInstance().updateOrderStatus(orderId, "Approved");
                     std::cout << "[INFO] Order " << orderId << " status updated to 'Approved'.\n";
                 }
             }
@@ -114,25 +70,13 @@ void OrderManager::processApprovedOrders()
         try
         {
             // Query the database for orders with status "Approved"
-            PGconn* conn = Database::getInstance().getConnection();
-            std::string query = "SELECT order_id FROM orders WHERE status = 'Approved';";
-            PGresult* res = PQexec(conn, query.c_str());
+            std::vector<std::string> approvedOrders = Database::getInstance().getApprovedOrders();
 
-            if (PQresultStatus(res) != PGRES_TUPLES_OK)
+            for (const auto& orderId : approvedOrders)
             {
-                Logger::getInstance().log("OrderManager", "Failed to fetch approved orders.");
-                PQclear(res);
-                std::this_thread::sleep_for(std::chrono::minutes(5)); // Wait before retrying
-                continue;
-            }
-            // Quantity of approved orders
-            int numRows = PQntuples(res);
-            for (int i = 0; i < numRows; ++i)
-            {
-                std::string orderId = PQgetvalue(res, i, 0);
-
                 // Fetch order details
                 nlohmann::json orderDetails = getOrderDetails(orderId);
+
                 // Extract items needed
                 std::vector<std::pair<int, int>> itemsNeeded;
                 for (const auto& item : orderDetails["items_needed"])
@@ -141,6 +85,7 @@ void OrderManager::processApprovedOrders()
                     int quantity = item["quantity"];
                     itemsNeeded.emplace_back(itemType, quantity);
                 }
+
                 // Call supplyRequest to fulfill the order
                 std::string supplyResponse = supplyRequest(orderId, itemsNeeded);
 
@@ -149,8 +94,6 @@ void OrderManager::processApprovedOrders()
 
                 Logger::getInstance().log("OrderManager", "Processed approved order: " + orderId);
             }
-
-            PQclear(res);
         }
         catch (const std::exception& e)
         {
@@ -196,6 +139,7 @@ std::string OrderManager::supplyRequest(const std::string orderId, const std::ve
             {
                 if (Sender::getInstance().sendMessageToClient(warehouseId, supplyRequest.dump()) != -1)
                 {
+                    printf("[INFO] Supply request sent to warehouse: %s\n", warehouseId.c_str());
                     // Log the operation
                     Logger::getInstance().log("OrderManager",
                                               "[ORDER] Fulfilled request for item_type: " + std::to_string(itemType) +
@@ -411,114 +355,15 @@ void OrderManager::deliveryUpdate(const std::string& jsonData)
 
 nlohmann::json OrderManager::getOrderDetails(const std::string& orderId)
 {
-    PGconn* conn = Database::getInstance().getConnection();
-
-    try
-    {
-        // Query to fetch order details and aggregate items_needed
-        std::string query = R"(
-            SELECT
-                o.order_id,
-                o.user_id,
-                o.status,
-                json_agg(json_build_object('item_type', o.item_type, 'quantity', o.quantity)) AS items_needed
-            FROM orders o
-            WHERE o.order_id = $1
-            GROUP BY o.order_id, o.user_id, o.status;
-        )";
-
-        const char* paramValues[1] = {orderId.c_str()};
-        PGresult* res = PQexecParams(conn, query.c_str(), 1, nullptr, paramValues, nullptr, nullptr, 0);
-
-        // Check if the query executed successfully
-        if (PQresultStatus(res) != PGRES_TUPLES_OK)
-        {
-            Logger::getInstance().log("OrderManager", "Error getting order details, executing query: " +
-                                                          std::string(PQerrorMessage(conn)));
-            std::cerr << "[ERROR] Failed to get order details: " << std::string(PQerrorMessage(conn)) << "\n";
-            PQclear(res);
-            return nlohmann::json{};
-        }
-
-        // Check if no results were found
-        if (PQntuples(res) == 0)
-        {
-            PQclear(res);
-            return nlohmann::json{{"status", "error"}, {"message", "No orders found with the specified ID"}};
-        }
-
-        // Build the JSON result
-        nlohmann::json result = nlohmann::json::object();
-        result["order_id"] = PQgetvalue(res, 0, 0);
-        result["user_id"] = PQgetvalue(res, 0, 1);
-        result["status"] = PQgetvalue(res, 0, 2);
-        result["items_needed"] = nlohmann::json::parse(PQgetvalue(res, 0, 3));
-
-        PQclear(res);
-        return result;
-    }
-    catch (const std::exception& e)
-    {
-        Logger::getInstance().log("OrderManager", "[ERROR] Exception in getOrderDetails: " + std::string(e.what()));
-        std::cerr << "[ERROR] Failed to get order details: " << e.what() << "\n";
-        return nlohmann::json{{"status", "error"}, {"message", "Failed to process get order details"}};
-    }
+    return Database::getInstance().getOrderDetails(orderId);
 }
 
 void OrderManager::updateOrderStatus(const std::string& orderId, const std::string& newStatus)
 {
-    PGconn* conn = Database::getInstance().getConnection(); // Conexión a la base de datos
-
-    try
+    if (!Database::getInstance().updateOrderStatus(orderId, newStatus))
     {
-
-        // Check if the order_id exists in the database
-        std::string checkQuery = "SELECT COUNT(*) FROM orders WHERE order_id = '" + orderId + "';";
-        PGresult* checkRes = PQexec(conn, checkQuery.c_str());
-
-        if (PQresultStatus(checkRes) != PGRES_TUPLES_OK)
-        {
-            Logger::getInstance().log("OrderManager", "Error update order status, executing query: " +
-                                                          std::string(PQerrorMessage(conn)));
-            std::cerr << "[ERROR] Failed to handle update order: " << std::string(PQerrorMessage(conn)) << "\n";
-            PQclear(checkRes);
-            return;
-        }
-
-        // Get the count of orders with the given order_id
-        int count = std::stoi(PQgetvalue(checkRes, 0, 0));
-        PQclear(checkRes);
-
-        if (count == 0)
-        {
-            std::cerr << "[ERROR] The order_id was not found in the database. \n";
-        }
-
-        // Construir la consulta SQL para actualizar el estado
-        std::string query = "UPDATE orders SET status = '" + newStatus + "' WHERE order_id = '" + orderId + "';";
-        PGresult* res = PQexec(conn, query.c_str());
-
-        // Verificar el estado de la consulta
-        if (PQresultStatus(res) != PGRES_COMMAND_OK)
-        {
-            Logger::getInstance().log("OrderManager", "Error update order status, executing query: " +
-                                                          std::string(PQerrorMessage(conn)));
-            std::cerr << "[ERROR] Failed to handle update order: " << std::string(PQerrorMessage(conn)) << "\n";
-            PQclear(res);
-            return;
-        }
-
-        // Liberar los recursos de la consulta
-        PQclear(res);
-
-        std::cout << "[ORDER] Order_id: " << orderId << " change of state to " << newStatus << std::endl;
-    }
-    catch (const std::exception& e)
-    {
-        // Manejo de errores
-        Logger::getInstance().log("OrderManager", "Get updating order status error: " + std::string(e.what()));
-        std::cerr << "[Order] Failed to process the updating order status: " << e.what() << "\n";
-        return;
+        Logger::getInstance().log("OrderManager", "Failed to update order status for order: " + orderId);
+        std::cerr << "[ERROR] Failed to update order status for order: " << orderId << "\n";
     }
 }
 
