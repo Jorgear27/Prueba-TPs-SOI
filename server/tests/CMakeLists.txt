@@ -12,7 +12,7 @@ add_executable(database_tests
   ${CMAKE_SOURCE_DIR}/server/src/log.cpp
 )
 
-target_link_libraries(database_tests PostgreSQL::PostgreSQL gtest::gtest)
+target_link_libraries(database_tests PostgreSQL::PostgreSQL gtest::gtest nlohmann_json::nlohmann_json)
 
 add_test(NAME database_tests COMMAND database_tests)
 
