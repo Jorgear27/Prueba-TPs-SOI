@@ -46,7 +46,7 @@ class Authentication
      * @param sock Socket file descriptor for the client.
      * @return std::string Response message to the client.
      */
-    std::string processClientInfo(const std::string& clientInfo, int sock);
+    virtual std::string processClientInfo(const std::string& clientInfo, int sock);
 
     /**
      * @brief Handle the disconnection of a client.
@@ -55,7 +55,7 @@ class Authentication
      * @param sock Socket file descriptor for the client.
      *
      */
-    void handleClientDisconnection(const std::string& jsonData, int sock);
+    virtual void handleClientDisconnection(const std::string& jsonData, int sock);
 
   private:
     /**

@@ -118,7 +118,11 @@ void Server::handleClient(int clientSocket)
         }
 
         // Use RequestRouter to process the request
-        RequestRouter router;
+        Authentication auth;
+        InventoryManager inventoryManager;
+        OrderManager orderManager;
+        // Pass dependencies to the RequestRouter constructor
+        RequestRouter router(auth, inventoryManager, orderManager);
         std::string response;
         try
         {

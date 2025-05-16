@@ -52,7 +52,7 @@ class OrderManager
      *
      * @param jsonData JSON string containing the order request.
      */
-    void handleNewOrder(const std::string& jsonData);
+    virtual void handleNewOrder(const std::string& jsonData);
 
     /**
      * @brief Process approved orders and create supply requests.
@@ -74,7 +74,7 @@ class OrderManager
      *
      * @param jsonData JSON string containing the order dispatch details.
      */
-    void handleOrderDispatch(const std::string& jsonData);
+    virtual void handleOrderDispatch(const std::string& jsonData);
 
     /**
      * @brief Handle order cancellation.
@@ -83,7 +83,7 @@ class OrderManager
      *
      * @return order cancellation status.
      */
-    std::string handleCancelation(const std::string& jsonData);
+    virtual std::string handleCancelation(const std::string& jsonData);
 
     /**
      * @brief Handle order status query.
@@ -91,14 +91,14 @@ class OrderManager
      * @param jsonData JSON string containing the order status query details.
      * @return std::string JSON string with the order status.
      */
-    std::string handleOrderStatusQuery(const std::string& jsonData);
+    virtual std::string handleOrderStatusQuery(const std::string& jsonData);
 
     /**
      * @brief Handle delivery updates from a hub.
      *
      * @param jsonData JSON string containing the delivery update details.
      */
-    void deliveryUpdate(const std::string& jsonData);
+    virtual void deliveryUpdate(const std::string& jsonData);
 
     /**
      * @brief Retrieve details of an order.

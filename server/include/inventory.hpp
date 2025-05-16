@@ -56,14 +56,14 @@ class InventoryManager
      *
      * @param jsonData JSON string containing the inventory update message.
      */
-    void handleInventoryUpdate(const std::string& jsonData);
+    virtual void handleInventoryUpdate(const std::string& jsonData);
 
     /**
      * @brief Handle a restock notice from the warehouse.
      *
      * @param jsonData JSON string containing the restock notice.
      */
-    void handleRestockNotice(const std::string& jsonData);
+    virtual void handleRestockNotice(const std::string& jsonData);
 
     /**
      * @brief Find a warehouse that can fulfill the requested items.

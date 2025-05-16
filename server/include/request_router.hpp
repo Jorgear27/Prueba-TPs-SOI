@@ -30,10 +30,13 @@ class RequestRouter
 {
   public:
     /**
-     * @brief Construct a new Request Router object
+     * @brief Construct a new Request Router object with dependency injection
      *
      */
-    RequestRouter() = default; // Default constructor
+    RequestRouter(Authentication& auth, InventoryManager& inventoryManager, OrderManager& orderManager)
+        : auth(auth), inventoryManager(inventoryManager), orderManager(orderManager)
+    {
+    }
 
     /**
      * @brief Route the incoming request based on the request type.
@@ -77,6 +80,10 @@ class RequestRouter
         {"disconnect_request", RequestType::DisconnectRequest},
         {"order_status", RequestType::OrderStatusQuery},
         {"cancel_order", RequestType::CancelOrder}};
+
+    Authentication& auth;               // Reference to the authentication instance
+    InventoryManager& inventoryManager; // Reference to the inventory manager instance
+    OrderManager& orderManager;         // Reference to the order manager instance
 };
 
 #endif

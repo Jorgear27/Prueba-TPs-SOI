@@ -1,87 +1,190 @@
+#include "authentication.hpp"
 #include "inventory.hpp"
+#include "orders.hpp"
 #include "request_router.hpp"
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <nlohmann/json.hpp>
 
-// Test for routing client info
-TEST(RequestRouterTest, RouteClientInfo)
+using ::testing::_;
+using ::testing::Return;
+using json = nlohmann::json;
+
+// Mock classes for dependencies
+class MockAuthentication : public Authentication
 {
-    RequestRouter router;
-    std::string request = R"({
-        "type": "client_info",
-        "hub_id": "H001",
-        "location": {
-            "latitude": 40.7128,
-            "longitude": -74.0060
-        }
-    })";
+  public:
+    MOCK_METHOD(std::string, processClientInfo, (const std::string&, int), (override));
+    MOCK_METHOD(void, handleClientDisconnection, (const std::string&, int), (override));
+};
 
-    int socket_test = 1; // Example socket value
-    std::string response = router.routeRequest(request, socket_test);
-    EXPECT_NE(response.find("\"status\":\"success\""), std::string::npos);
+class MockInventoryManager : public InventoryManager
+{
+  public:
+    MOCK_METHOD(void, handleInventoryUpdate, (const std::string&), (override));
+    MOCK_METHOD(void, handleRestockNotice, (const std::string&), (override));
+};
+
+class MockOrderManager : public OrderManager
+{
+  public:
+    MOCK_METHOD(void, handleNewOrder, (const std::string&), (override));
+    MOCK_METHOD(void, handleOrderDispatch, (const std::string&), (override));
+    MOCK_METHOD(void, deliveryUpdate, (const std::string&), (override));
+    MOCK_METHOD(std::string, handleOrderStatusQuery, (const std::string&), (override));
+    MOCK_METHOD(std::string, handleCancelation, (const std::string&), (override));
+};
+
+// Test fixture
+class RequestRouterTest : public ::testing::Test
+{
+  protected:
+    MockAuthentication mockAuth;
+    MockInventoryManager mockInventoryManager;
+    MockOrderManager mockOrderManager;
+    RequestRouter router;
+
+    RequestRouterTest() : router(mockAuth, mockInventoryManager, mockOrderManager)
+    {
+    } // Inject mocks
+};
+
+// Test for ClientInfo request
+TEST_F(RequestRouterTest, RouteRequest_ClientInfo)
+{
+    std::string jsonData = R"({"type": "client_info"})";
+    int sock = 1;
+
+    EXPECT_CALL(mockAuth, processClientInfo(jsonData, sock)).WillOnce(Return(R"({"status": "success"})"));
+
+    std::string response = router.routeRequest(jsonData, sock);
+    EXPECT_EQ(response, R"({"status": "success"})");
 }
 
-// Test for routing inventory updates
-TEST(RequestRouterTest, RouteInventoryUpdate)
+// Test for InventoryUpdate request
+TEST_F(RequestRouterTest, RouteRequest_InventoryUpdate)
 {
-    RequestRouter router;
-    std::string request = R"({
-        "type": "inventory_update",
-        "timestamp": "2025-04-01T12:10:00Z",
-        "user_id": "W001",
-        "inventory": [
-            { "item_type": 0, "stock_level": 100 },
-            { "item_type": 1, "stock_level": 50 }
-        ]
-    })";
+    std::string jsonData = R"({"type": "inventory_update"})";
 
-    int socket_test = 1; // Example socket value
-    std::string response = router.routeRequest(request, socket_test);
-    EXPECT_NE(response.find("\"status\":\"success\""), std::string::npos);
-    EXPECT_NE(response.find("\"message\":\"Inventory updated\""), std::string::npos);
+    EXPECT_CALL(mockInventoryManager, handleInventoryUpdate(jsonData));
+
+    std::string response = router.routeRequest(jsonData, 0);
+
+    // Parse the actual and expected responses into JSON objects
+    json actualResponse = json::parse(response);
+    json expectedResponse = json::parse(R"({"status":"success","message":"Inventory updated"})");
+
+    EXPECT_EQ(actualResponse, expectedResponse); // Compare JSON objects
 }
 
-// Test for routing restock notices
-TEST(RequestRouterTest, RouteRestockNotice)
+// Test for RestockNotice request
+TEST_F(RequestRouterTest, RouteRequest_RestockNotice)
 {
-    RequestRouter router;
-    std::string request = R"({
-        "type": "restock_notice",
-        "user_id": "W001",
-        "inventory": [
-            { "item_type": 0, "stock_level": 200 },
-            { "item_type": 1, "stock_level": 150 }
-        ]
-    })";
+    std::string jsonData = R"({"type": "restock_notice"})";
 
-    int socket_test = 1; // Example socket value
-    std::string response = router.routeRequest(request, socket_test);
-    EXPECT_NE(response.find("\"status\":\"success\""), std::string::npos);
-    EXPECT_NE(response.find("\"message\":\"Restock notice processed\""), std::string::npos);
+    EXPECT_CALL(mockInventoryManager, handleRestockNotice(jsonData));
+
+    std::string response = router.routeRequest(jsonData, 0);
+    json actualResponse = json::parse(response);
+    json expectedResponse = json::parse(R"({"status":"success","message":"Restock notice processed"})");
+
+    EXPECT_EQ(actualResponse, expectedResponse);
 }
 
-// Test for unknown request type
-TEST(RequestRouterTest, UnknownRequestType)
+// Test for OrderRequest request
+TEST_F(RequestRouterTest, RouteRequest_OrderRequest)
 {
-    RequestRouter router;
-    std::string request = R"({
-        "type": "unknown_type"
-    })";
+    std::string jsonData = R"({"type": "order_request"})";
 
-    int socket_test = 1; // Example socket value
-    std::string response = router.routeRequest(request, socket_test);
-    EXPECT_NE(response.find("\"status\":\"unknown request\""), std::string::npos);
+    EXPECT_CALL(mockOrderManager, handleNewOrder(jsonData));
+
+    std::string response = router.routeRequest(jsonData, 0);
+    json actualResponse = json::parse(response);
+    json expectedResponse = json::parse(R"({"status":"success","message":"New order created"})");
+
+    EXPECT_EQ(actualResponse, expectedResponse);
 }
 
-// Test for missing required fields
-TEST(RequestRouterTest, MissingRequiredFields)
+// Test for OrderDispatch request
+TEST_F(RequestRouterTest, RouteRequest_OrderDispatch)
 {
-    RequestRouter router;
-    std::string request = R"({
-        "type": "client_info"
-    })"; // Missing "hub_id" or "warehouse_id"
+    std::string jsonData = R"({"type": "order_dispatch"})";
 
-    int socket_test = 1; // Example socket value
-    std::string response = router.routeRequest(request, socket_test);
+    EXPECT_CALL(mockOrderManager, handleOrderDispatch(jsonData));
+
+    std::string response = router.routeRequest(jsonData, 0);
+    json actualResponse = json::parse(response);
+    json expectedResponse = json::parse(R"({"status":"success","message":"Order dispatched"})");
+
+    EXPECT_EQ(actualResponse, expectedResponse);
+}
+
+// Test for DeliveryUpdate request
+TEST_F(RequestRouterTest, RouteRequest_DeliveryUpdate)
+{
+    std::string jsonData = R"({"type": "delivery_update"})";
+
+    EXPECT_CALL(mockOrderManager, deliveryUpdate(jsonData));
+
+    std::string response = router.routeRequest(jsonData, 0);
+    json actualResponse = json::parse(response);
+    json expectedResponse = json::parse(R"({"status":"success","message":"Delivery updated"})");
+
+    EXPECT_EQ(actualResponse, expectedResponse);
+}
+
+// Test for DisconnectRequest request
+TEST_F(RequestRouterTest, RouteRequest_DisconnectRequest)
+{
+    std::string jsonData = R"({"type": "disconnect_request"})";
+    int sock = 1;
+
+    EXPECT_CALL(mockAuth, handleClientDisconnection(jsonData, sock));
+
+    std::string response = router.routeRequest(jsonData, sock);
+    json actualResponse = json::parse(response);
+    json expectedResponse =
+        json::parse(R"({"order":"disconnect","status":"success","message":"Disconnect request processed"})");
+
+    EXPECT_EQ(actualResponse, expectedResponse);
+}
+
+// Test for OrderStatusQuery request
+TEST_F(RequestRouterTest, RouteRequest_OrderStatusQuery)
+{
+    std::string jsonData = R"({"type": "order_status"})";
+
+    EXPECT_CALL(mockOrderManager, handleOrderStatusQuery(jsonData)).WillOnce(Return(R"({"status": "success"})"));
+
+    std::string response = router.routeRequest(jsonData, 0);
+    EXPECT_EQ(response, R"({"status": "success"})");
+}
+
+// Test for CancelOrder request
+TEST_F(RequestRouterTest, RouteRequest_CancelOrder)
+{
+    std::string jsonData = R"({"type": "cancel_order"})";
+
+    EXPECT_CALL(mockOrderManager, handleCancelation(jsonData)).WillOnce(Return(R"({"status": "success"})"));
+
+    std::string response = router.routeRequest(jsonData, 0);
+    EXPECT_EQ(response, R"({"status": "success"})");
+}
+
+// Test for Unknown request type
+TEST_F(RequestRouterTest, RouteRequest_UnknownRequest)
+{
+    std::string jsonData = R"({"type": "unknown_request"})";
+
+    std::string response = router.routeRequest(jsonData, 0);
+    EXPECT_EQ(response, R"({"status":"unknown request"})");
+}
+
+// Test for invalid JSON
+TEST_F(RequestRouterTest, RouteRequest_InvalidJSON)
+{
+    std::string jsonData = R"({invalid_json})";
+
+    std::string response = router.routeRequest(jsonData, 0);
     EXPECT_NE(response.find("\"status\":\"error\""), std::string::npos);
-    EXPECT_NE(response.find("\"message\":\"Invalid JSON format or missing fields\""), std::string::npos);
 }
