@@ -3,6 +3,9 @@ CREATE DATABASE paranoid_db;
 -- Connect to the database
 \c paranoid_db;
 
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO server;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO server;
+
 --USERS TABLE (for the server to recognize his clients)
 CREATE TABLE IF NOT EXISTS users (
     user_id TEXT PRIMARY KEY,  -- Format: H001, W002, etc

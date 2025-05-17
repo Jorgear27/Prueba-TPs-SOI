@@ -1,5 +1,5 @@
 #include "authentication.hpp"
-#include "gmock/gmock.h"
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #define SOCKET_TEST 1

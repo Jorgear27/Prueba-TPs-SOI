@@ -1,6 +1,6 @@
 #include "server.hpp"
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 // Mock classes for dependencies
 class MockDatabase : public Database

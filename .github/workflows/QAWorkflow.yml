@@ -39,6 +39,13 @@ jobs:
           sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE paranoid_db TO server;"
           sudo -u postgres psql -d paranoid_db -f server/init/init_postgres.sql
 
+      - name: Verify PostgreSQL schema
+        run: |
+          sudo -u postgres psql -d paranoid_db -c "\dt"
+          sudo -u postgres psql -d paranoid_db -c "\d users"
+          sudo -u postgres psql -d paranoid_db -c "\d inventory"
+          sudo -u postgres psql -d paranoid_db -c "\d orders"
+
       - name: Run style check
         uses: ./.github/actions/style
 
