@@ -276,6 +276,7 @@ bool Database::insertOrUpdateUser(const std::string& userId, double latitude, do
 
         if (PQresultStatus(res) != PGRES_COMMAND_OK)
         {
+            std::cerr << "[ERROR] Error inserting/updating user: " << PQerrorMessage(conn) << "\n";
             Logger::getInstance().log("Database",
                                       "[ERROR] Error inserting/updating user: " + std::string(PQerrorMessage(conn)));
             PQclear(res);
