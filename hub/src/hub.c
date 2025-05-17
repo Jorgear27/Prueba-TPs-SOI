@@ -1,5 +1,4 @@
 #include "hub.h"
-#include "orders.h"
 
 int connect_hub_to_server()
 {

@@ -1,5 +1,9 @@
+#include "authentication.hpp"
 #include "database.hpp"
+#include "inventory.hpp"
 #include "log.hpp"
+#include "orders.hpp"
+#include "request_router.hpp"
 #include "server.hpp"
 #include <chrono>
 #include <csignal>
@@ -16,7 +20,15 @@ int main()
         return EXIT_FAILURE;
     }
 
-    Server server;
+    // Create dependencies for the Server
+    Logger& logger = Logger::getInstance();
+    Authentication auth;
+    InventoryManager inventoryManager;
+    OrderManager orderManager;
+    RequestRouter router(auth, inventoryManager, orderManager);
+
+    // Create the Server instance with the required dependencies
+    Server server(logger, router);
 
     // Initialize the server
     if (!server.initialize())

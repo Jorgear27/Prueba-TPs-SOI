@@ -213,7 +213,7 @@ std::vector<std::string> Database::getApprovedOrders()
 
     try
     {
-        std::string query = "SELECT order_id FROM orders WHERE status = 'Approved';";
+        std::string query = "SELECT DISTINCT order_id FROM orders WHERE status = 'Approved';";
         PGresult* res = PQexec(conn, query.c_str());
 
         if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -238,4 +238,129 @@ std::vector<std::string> Database::getApprovedOrders()
     }
 
     return approvedOrders;
+}
+
+bool Database::insertOrUpdateUser(const std::string& userId, double latitude, double longitude)
+{
+    try
+    {
+        std::string query = "INSERT INTO users (user_id, latitude, longitude, is_online) "
+                            "VALUES ($1, $2, $3, TRUE) "
+                            "ON CONFLICT (user_id) DO UPDATE "
+                            "SET latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude, is_online = TRUE;";
+
+        const char* paramValues[3] = {userId.c_str(), std::to_string(latitude).c_str(),
+                                      std::to_string(longitude).c_str()};
+        PGresult* res = PQexecParams(conn, query.c_str(), 3, nullptr, paramValues, nullptr, nullptr, 0);
+
+        if (PQresultStatus(res) != PGRES_COMMAND_OK)
+        {
+            Logger::getInstance().log("Database",
+                                      "Error inserting/updating user: " + std::string(PQerrorMessage(conn)));
+            PQclear(res);
+            return false;
+        }
+
+        PQclear(res);
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        Logger::getInstance().log("Database", "Exception in insertOrUpdateUser: " + std::string(e.what()));
+        return false;
+    }
+}
+
+bool Database::updateUserOnlineStatus(const std::string& userId, bool isOnline)
+{
+    try
+    {
+        std::string query =
+            "UPDATE users SET is_online = " + std::string(isOnline ? "TRUE" : "FALSE") + " WHERE user_id = $1;";
+        const char* paramValues[1] = {userId.c_str()};
+        PGresult* res = PQexecParams(conn, query.c_str(), 1, nullptr, paramValues, nullptr, nullptr, 0);
+
+        if (PQresultStatus(res) != PGRES_COMMAND_OK)
+        {
+            Logger::getInstance().log("Database",
+                                      "Error updating user online status: " + std::string(PQerrorMessage(conn)));
+            PQclear(res);
+            return false;
+        }
+
+        PQclear(res);
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        Logger::getInstance().log("Database", "Exception in updateUserOnlineStatus: " + std::string(e.what()));
+        return false;
+    }
+}
+
+bool Database::insertOrUpdateInventory(const std::string& userId, int itemType, int stockLevel, int stockThreshold)
+{
+    try
+    {
+        std::string query = "INSERT INTO inventory (user_id, item_type, stock_level, stock_threshold) "
+                            "VALUES ($1, $2, $3, $4) "
+                            "ON CONFLICT (user_id, item_type) DO UPDATE "
+                            "SET stock_level = EXCLUDED.stock_level, stock_threshold = EXCLUDED.stock_threshold;";
+
+        const char* paramValues[4] = {userId.c_str(), std::to_string(itemType).c_str(),
+                                      std::to_string(stockLevel).c_str(), std::to_string(stockThreshold).c_str()};
+        PGresult* res = PQexecParams(conn, query.c_str(), 4, nullptr, paramValues, nullptr, nullptr, 0);
+
+        if (PQresultStatus(res) != PGRES_COMMAND_OK)
+        {
+            Logger::getInstance().log("Database",
+                                      "Error inserting/updating inventory: " + std::string(PQerrorMessage(conn)));
+            PQclear(res);
+            return false;
+        }
+
+        PQclear(res);
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        Logger::getInstance().log("Database", "Exception in insertOrUpdateInventory: " + std::string(e.what()));
+        return false;
+    }
+}
+
+std::string Database::findWarehouseForItem(int itemType, int quantityNeeded)
+{
+    try
+    {
+        std::string query =
+            "SELECT i.user_id FROM inventory i "
+            "WHERE i.user_id IN (SELECT u.user_id FROM users u WHERE u.user_id LIKE 'W%' AND u.is_online = TRUE) "
+            "AND i.item_type = $1 AND i.stock_level >= $2 LIMIT 1;";
+
+        const char* paramValues[2] = {std::to_string(itemType).c_str(), std::to_string(quantityNeeded).c_str()};
+        PGresult* res = PQexecParams(conn, query.c_str(), 2, nullptr, paramValues, nullptr, nullptr, 0);
+
+        if (PQresultStatus(res) != PGRES_TUPLES_OK)
+        {
+            Logger::getInstance().log("Database",
+                                      "Error finding warehouse for item: " + std::string(PQerrorMessage(conn)));
+            PQclear(res);
+            return "";
+        }
+
+        std::string warehouseId = "";
+        if (PQntuples(res) > 0)
+        {
+            warehouseId = PQgetvalue(res, 0, 0);
+        }
+
+        PQclear(res);
+        return warehouseId;
+    }
+    catch (const std::exception& e)
+    {
+        Logger::getInstance().log("Database", "Exception in findWarehouseForItem: " + std::string(e.what()));
+        return "";
+    }
 }

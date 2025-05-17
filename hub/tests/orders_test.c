@@ -22,6 +22,7 @@ int main(void);
 // Mock prototypes
 int send_message_from_hub(int sock, const char* message);
 int receive_message_hub(int sock, char* buffer, size_t buffer_size);
+void generate_timestamp_hub(char* buffer, size_t size);
 
 static int mock_send_message_result = 0;
 static const char* mock_received_message = NULL;
@@ -44,6 +45,14 @@ int receive_message_hub(int sock, char* buffer, size_t buffer_size)
     }
     strncpy(buffer, mock_received_message, buffer_size);
     return strlen(mock_received_message); // Simulate receiving a message
+}
+
+void generate_timestamp_hub(char* buffer, size_t size)
+{
+    // Simulate a fixed timestamp for testing
+    const char* mock_timestamp = "2025-01-01T00:00:00Z";
+    strncpy(buffer, mock_timestamp, size - 1);
+    buffer[size - 1] = '\0';
 }
 
 int scanf(const char* format, ...)
@@ -142,15 +151,6 @@ void test_handle_query_order_status()
     // Expect no errors and successful order status query
 }
 
-void test_create_client_info_hub()
-{
-    printf("Testing create_client_info_hub...\n");
-    char* client_info = create_client_info_hub("hub_1", 10, 20);
-    TEST_ASSERT_NOT_NULL(client_info);
-    printf("Client Info: %s\n", client_info);
-    free(client_info);
-}
-
 void test_create_order_request()
 {
     printf("Testing create_order_request...\n");
@@ -169,7 +169,6 @@ int main()
     RUN_TEST(test_handle_create_order_invalid_item_type);
     RUN_TEST(test_handle_cancel_order);
     RUN_TEST(test_handle_query_order_status);
-    RUN_TEST(test_create_client_info_hub);
     RUN_TEST(test_create_order_request);
 
     return UNITY_END();

@@ -67,12 +67,12 @@ class Sender
      */
     virtual int sendMessageToClient(const std::string& clientId, const std::string& jsonMessage);
 
-  private:
     /**
      * @brief Get the socket associated with a client ID.
      */
     int getConnection(const std::string& clientId);
 
+  private:
     /**
      * @brief Map of client connections.
      *

@@ -26,6 +26,15 @@ int main(void);
 // Mock functions
 #ifdef TESTING
 static int simulate_socket_failure = 0; // Global flag to simulate socket failure
+void generate_timestamp_hub(char* buffer, size_t size);
+
+void generate_timestamp_hub(char* buffer, size_t size)
+{
+    // Simulate a fixed timestamp for testing
+    const char* mock_timestamp = "2025-01-01T00:00:00Z";
+    strncpy(buffer, mock_timestamp, size - 1);
+    buffer[size - 1] = '\0';
+}
 
 int fcntl(int fd, int cmd, ...)
 {

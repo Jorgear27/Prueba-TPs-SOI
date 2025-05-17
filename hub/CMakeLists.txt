@@ -18,6 +18,7 @@ find_package(unity REQUIRED)
 # Añadir los archivos fuente
 set(SOURCES
     src/main.c
+    src/authentication.c
     src/hub.c
     src/orders.c
     src/listener.c

@@ -1,32 +1,24 @@
 #include "authentication.h"
 
-void generate_timestamp_wh(char* buffer, size_t size)
+// Helper function to generate the current timestamp in ISO 8601 format
+void generate_timestamp_hub(char* buffer, size_t size)
 {
     time_t now = time(NULL);
     struct tm* t = gmtime(&now);
     strftime(buffer, size, "%Y-%m-%dT%H:%M:%SZ", t);
 }
 
-char* create_client_info_warehouse(const char* wh_id, int latitude, int longitude)
+char* create_client_info_hub(const char* hub_id, int latitude, int longitude)
 {
-
-    // Validar el formato de wh_id
-    if (wh_id == NULL || wh_id[0] != 'W')
-    {
-        return NULL; // Retornar NULL si el formato es inválido
-        printf("Invalid warehouse ID format\n");
-    }
-
-    // Create a JSON object for client information
     cJSON* json_obj = cJSON_CreateObject();
 
     // Generate the current timestamp
     char timestamp[MAX_TIMESTAMP_LENGTH];
-    generate_timestamp_wh(timestamp, sizeof(timestamp));
+    generate_timestamp_hub(timestamp, sizeof(timestamp));
 
     cJSON_AddStringToObject(json_obj, "type", "client_info");
     cJSON_AddStringToObject(json_obj, "timestamp", timestamp);
-    cJSON_AddStringToObject(json_obj, "warehouse_id", wh_id);
+    cJSON_AddStringToObject(json_obj, "hub_id", hub_id);
 
     cJSON* location = cJSON_CreateObject();
     cJSON_AddNumberToObject(location, "latitude", latitude);
@@ -35,30 +27,28 @@ char* create_client_info_warehouse(const char* wh_id, int latitude, int longitud
 
     char* result = cJSON_PrintUnformatted(json_obj);
 
-    // Clean up the JSON object
-    cJSON_Delete(json_obj);
-
+    cJSON_Delete(json_obj); // Free JSON object
     return result;
 }
 
-bool isValidWhId(const char* wh_id)
+bool isValidHubId(const char* hub_id)
 {
     // Verify that the warehouse ID is not NULL
-    if (strlen(wh_id) < 2)
+    if (strlen(hub_id) < 2)
     {
         return false;
     }
 
-    // Verify that the first character is 'W'
-    if (wh_id[0] != 'W')
+    // Verify that the first character is 'H'
+    if (hub_id[0] != 'H')
     {
         return false;
     }
 
     // Verify that the rest of the string contains only digits
-    for (size_t i = 1; i < strlen(wh_id); ++i)
+    for (size_t i = 1; i < strlen(hub_id); ++i)
     {
-        if (!isdigit(wh_id[i]))
+        if (!isdigit(hub_id[i]))
         {
             return false;
         }

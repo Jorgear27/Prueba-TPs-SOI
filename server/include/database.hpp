@@ -39,7 +39,7 @@ class Database
      * @brief Destroys the Database object and disconnects from the database.
      *
      */
-    ~Database();
+    virtual ~Database();
 
     /**
      * @brief Checks if the database connection is active.
@@ -117,6 +117,45 @@ class Database
      * @return std::vector<std::string> List of approved order IDs.
      */
     virtual std::vector<std::string> getApprovedOrders();
+
+    /**
+     * @brief Insert or update user information in the database.
+     *
+     * @param userId The ID of the user.
+     * @param latitude The latitude of the user's location.
+     * @param longitude The longitude of the user's location.
+     * @return true if the operation was successful, false otherwise.
+     */
+    virtual bool insertOrUpdateUser(const std::string& userId, double latitude, double longitude);
+
+    /**
+     * @brief Update the user's online status in the database.
+     *
+     * @param userId The ID of the user.
+     * @param isOnline The new online status of the user.
+     * @return true if the operation was successful, false otherwise.
+     */
+    virtual bool updateUserOnlineStatus(const std::string& userId, bool isOnline);
+
+    /**
+     * @brief Insert or update inventory for a user.
+     *
+     * @param userId The ID of the user.
+     * @param itemType The type of the item.
+     * @param stockLevel The stock level of the item.
+     * @param stockThreshold The stock threshold of the item.
+     * @return true if the operation was successful, false otherwise.
+     */
+    virtual bool insertOrUpdateInventory(const std::string& userId, int itemType, int stockLevel, int stockThreshold);
+
+    /**
+     * @brief Find a warehouse that can fulfill a request for an item.
+     *
+     * @param itemType The type of the item.
+     * @param quantityNeeded The quantity of the item needed.
+     * @return std::string The ID of the warehouse, or an empty string if none is found.
+     */
+    virtual std::string findWarehouseForItem(int itemType, int quantityNeeded);
 
   private:
     /**

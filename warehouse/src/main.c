@@ -6,6 +6,7 @@
 
 // Function prototypes
 void print_usage(const char* program_name);
+void print_invalid_id(const char* program_name);
 void display_menu(void);
 
 #define ARGC_REQUESTED 4
@@ -22,6 +23,12 @@ enum MenuOptions
 void print_usage(const char* program_name)
 {
     printf("Usage: %s <warehouse_id> <latitude> <longitude>\n", program_name);
+}
+
+void print_invalid_id(const char* program_name)
+{
+    printf("warehouse_id format invalid. Usage: Wxxx where xxx are digits.\n");
+    printf("Example: %s W001 40.7128 -74.0060\n", program_name);
 }
 
 void display_menu()
@@ -48,6 +55,13 @@ int main(int argc, char* argv[])
     const char* wh_id = argv[1];
     int latitude = atoi(argv[2]);
     int longitude = atoi(argv[3]);
+
+    // Validate warehouse ID format
+    if (!isValidWhId(wh_id))
+    {
+        print_invalid_id(argv[0]);
+        return EXIT_FAILURE;
+    }
 
     // Initialize inventory with 3 item types
     initialize_inventory(MAX_ITEM_TYPES);

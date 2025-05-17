@@ -2,7 +2,7 @@
  * @file authentication.h
  * @brief Header file for the Authentication module.
  * @version 0.1
- * @date 2025-04-29
+ * @date 2025-05-10
  *
  * @copyright Copyright (c) 2025
  *
@@ -11,7 +11,7 @@
 #ifndef AUTHENTICATION_H
 #define AUTHENTICATION_H
 
-#include "warehouse.h"
+#include "hub.h"
 #include <cjson/cJSON.h>
 #include <ctype.h>
 #include <pthread.h>
@@ -29,27 +29,27 @@
 #define MAX_TIMESTAMP_LENGTH 50
 
 /**
- * @brief Generate a timestamp in ISO 8601 format.
+ * @brief Generate the current timestamp in ISO 8601 format
  *
  */
-void generate_timestamp_wh(char* buffer, size_t size);
+void generate_timestamp_hub(char* buffer, size_t size);
 
 /**
  * @brief Create a JSON string for client information.
  *
- * @param wh_id
+ * @param hub_id
  * @param latitude
  * @param longitude
  * @return client_info json string
  */
-char* create_client_info_warehouse(const char* wh_id, int latitude, int longitude);
+char* create_client_info_hub(const char* hub_id, int latitude, int longitude);
 
 /**
- * @brief Validate the warehouse ID format.
+ * @brief Validate the hub ID format.
  *
- * @param wh_id
+ * @param hub_id
  * @return true if valid, false otherwise
  */
-bool isValidWhId(const char* wh_id);
+bool isValidHubId(const char* hub_id);
 
 #endif // AUTHENTICATION_H

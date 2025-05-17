@@ -58,7 +58,7 @@ class OrderManager
      * @brief Process approved orders and create supply requests.
      *
      */
-    void processApprovedOrders();
+    virtual void processApprovedOrders();
 
     /**
      * @brief Send the order to the warehouse (supply request) and reduce stock from warehouses.
@@ -132,10 +132,10 @@ class OrderManager
     bool validateOrderUpdate(const json& message);
 
   private:
-    Database& database;                 // Reference to the database instance
-    Logger& logger;                     // Reference to the logger instance
-    Sender& sender;                     // Reference to the sender instance
-    InventoryManager& inventoryManager; // Reference to the inventory manager instance
+    Database& database;                 //!< Reference to the database instance
+    Logger& logger;                     //!< Reference to the logger instance
+    Sender& sender;                     //!< Reference to the sender instance
+    InventoryManager& inventoryManager; //!< Reference to the inventory manager instance
 };
 
 #endif

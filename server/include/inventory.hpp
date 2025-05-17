@@ -52,6 +52,17 @@ class InventoryManager
 {
   public:
     /**
+     * @brief Construct a new Inventory Manager object with dependency injection.
+     *
+     * @param logger
+     * @param database
+     */
+    InventoryManager(Logger& logger = Logger::getInstance(), Database& database = Database::getInstance())
+        : logger(logger), database(database)
+    {
+    }
+
+    /**
      * @brief Handle an inventory update message from the warehouse.
      *
      * @param jsonData JSON string containing the inventory update message.
@@ -84,7 +95,10 @@ class InventoryManager
 
   private:
     std::unordered_map<std::string, std::unordered_map<int, InventoryEntry>> inventory; // user_id -> item_type ->
-                                                                                        // InventoryEntry
+    // InventoryEntry
+
+    Logger& logger;     // Reference to the Logger instance
+    Database& database; // Reference to the Database instance
 };
 
 #endif

@@ -5,8 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define WH_ID "W009"
-#define WH_FAIL "M001"
+#define HUB_ID "H009"
+#define HUB_FAIL "M001"
 #define LATITUDE 37
 #define LONGITUDE -122
 
@@ -14,7 +14,7 @@ void setUp(void);
 void tearDown(void);
 void test_create_client_info(void);
 void test_create_client_info_fail(void);
-void test_validate_warehouse_id(void);
+void test_validate_hub_id(void);
 int main(void);
 
 void setUp(void)
@@ -27,11 +27,11 @@ void tearDown(void)
     // Cleanup code after each test
 }
 
-// Test case for create_client_info_warehouse
+// Test case for create_client_info_hub
 void test_create_client_info()
 {
-    printf("Testing create_client_info_warehouse...\n");
-    char* client_info = create_client_info_warehouse(WH_ID, LATITUDE, LONGITUDE);
+    printf("Testing create_client_info_hub...\n");
+    char* client_info = create_client_info_hub(HUB_ID, LATITUDE, LONGITUDE);
 
     // Parse the JSON result
     cJSON* json_obj = cJSON_Parse(client_info);
@@ -46,9 +46,9 @@ void test_create_client_info()
     TEST_ASSERT_TRUE(cJSON_IsString(timestamp));
     TEST_ASSERT_TRUE(strlen(timestamp->valuestring) > 0);
 
-    cJSON* warehouse_id_json = cJSON_GetObjectItem(json_obj, "warehouse_id");
-    TEST_ASSERT_TRUE(cJSON_IsString(warehouse_id_json));
-    TEST_ASSERT_EQUAL_STRING(WH_ID, warehouse_id_json->valuestring);
+    cJSON* hub_id_json = cJSON_GetObjectItem(json_obj, "hub_id");
+    TEST_ASSERT_TRUE(cJSON_IsString(hub_id_json));
+    TEST_ASSERT_EQUAL_STRING(HUB_ID, hub_id_json->valuestring);
 
     cJSON* location = cJSON_GetObjectItem(json_obj, "location");
     TEST_ASSERT_TRUE(cJSON_IsObject(location));
@@ -67,15 +67,15 @@ void test_create_client_info()
     free(client_info);
 }
 
-// Test case for create_client_info_warehouse with invalid warehouse ID
+// Test case for create_client_info_hub with invalid hub ID
 void test_create_client_info_fail()
 {
-    printf("Testing create_client_info_warehouse with invalid warehouse ID...\n");
-    char* client_info = create_client_info_warehouse(WH_FAIL, LATITUDE, LONGITUDE);
+    printf("Testing create_client_info_hub with invalid hub ID...\n");
+    char* client_info = create_client_info_hub(HUB_FAIL, LATITUDE, LONGITUDE);
 
     // Parse the JSON result
     cJSON* json_obj = cJSON_Parse(client_info);
-    TEST_ASSERT_NULL(json_obj); // Expecting NULL for invalid warehouse ID
+    TEST_ASSERT_NULL(json_obj); // Expecting NULL for invalid hub ID
     printf("Client info JSON for invalid ID: %s\n", client_info);
 
     // Clean up
@@ -83,12 +83,12 @@ void test_create_client_info_fail()
     free(client_info);
 }
 
-// Test cases for validate_warehouse_id
-void test_validate_warehouse_id()
+// Test cases for validate_hub_id
+void test_validate_hub_id()
 {
-    printf("Testing validate_warehouse_id...\n");
-    TEST_ASSERT_TRUE(isValidWhId(WH_ID));
-    TEST_ASSERT_FALSE(isValidWhId(WH_FAIL));
+    printf("Testing validate_hub_id...\n");
+    TEST_ASSERT_TRUE(isValidHubId(HUB_ID));
+    TEST_ASSERT_FALSE(isValidHubId(HUB_FAIL));
 }
 
 int main(void)
@@ -96,6 +96,6 @@ int main(void)
     UNITY_BEGIN();
     RUN_TEST(test_create_client_info);
     RUN_TEST(test_create_client_info_fail);
-    RUN_TEST(test_validate_warehouse_id);
+    RUN_TEST(test_validate_hub_id);
     return UNITY_END();
 }

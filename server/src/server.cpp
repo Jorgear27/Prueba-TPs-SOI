@@ -1,6 +1,6 @@
 #include "server.hpp"
 
-Server::Server()
+Server::Server(Logger& logger, RequestRouter& router) : logger(logger), router(router)
 {
 }
 
@@ -11,8 +11,8 @@ Server::~Server()
 bool Server::initialize()
 {
     // Log the server initialization
-    Logger::getInstance().log("Server", "[INFO] Initializing server...");
-    Logger::getInstance().log("Server", "[INFO] Server initialized on port " + std::to_string(PORT));
+    logger.log("Server", "[INFO] Initializing server...");
+    logger.log("Server", "[INFO] Server initialized on port " + std::to_string(PORT));
     std::cout << "[INFO] Initializing server...\n";
     std::cout << "[INFO] Server initialized on port " << PORT << "\n";
     return true;
@@ -28,14 +28,6 @@ void Server::run()
 {
     std::signal(SIGINT, signalHandler);  // Handle Ctrl+C
     std::signal(SIGTERM, signalHandler); // Handle termination signals
-
-    // Handle SIGCHLD to reap child processes
-    std::signal(SIGCHLD, [](int) {
-        while (waitpid(-1, nullptr, WNOHANG) > 0)
-        {
-            // Reap all terminated child processes
-        }
-    });
 
     int server_fd, client_socket;
     struct sockaddr_in address;
@@ -60,30 +52,40 @@ void Server::run()
         exit(EXIT_FAILURE);
     }
 
-    if (listen(server_fd, MAX_CONNECTIONS) < 0)
-    {
-        perror("listen");
-        exit(EXIT_FAILURE);
-    }
+    listen(server_fd, MAX_CONNECTIONS);
 
     // Log the server start
-    Logger::getInstance().log("Server", "[INFO] Server is running and listening for connections...");
+    logger.log("Server", "[INFO] Server is running and listening for connections...");
     std::cout << "[INFO] Server is running and listening for connections...\n";
 
     // Start the periodic thread for processing approved orders
     std::thread(&OrderManager::processApprovedOrders, OrderManager()).detach();
 
-    while (true)
+    while (running)
     {
-        client_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen);
-        if (client_socket < 0)
+        fd_set readfds;
+        FD_ZERO(&readfds);
+        FD_SET(server_fd, &readfds);
+
+        struct timeval timeout;
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 100000; // 100ms timeout
+
+        int activity = select(server_fd + 1, &readfds, nullptr, nullptr, &timeout);
+
+        if (activity < 0 && errno != EINTR)
         {
-            perror("accept");
-            continue;
+            perror("select error");
+            break;
         }
 
-        // Handle the client in a new thread
-        std::thread(&Server::handleClient, this, client_socket).detach();
+        if (activity > 0 && FD_ISSET(server_fd, &readfds))
+        {
+            client_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen);
+
+            // Handle the client in a new thread
+            std::thread(&Server::handleClient, this, client_socket).detach();
+        }
     }
 
     close(server_fd);
@@ -104,35 +106,27 @@ void Server::handleClient(int clientSocket)
             if (bytesRead == 0)
             {
                 // Client disconnected
-                Logger::getInstance().log("Server", "[INFO] Client disconnected: " + std::to_string(clientSocket));
+                logger.log("Server", "[INFO] Client disconnected: " + std::to_string(clientSocket));
                 std::cout << "[INFO] Client disconnected.\n";
             }
             else
             {
                 // Error occurred
-                Logger::getInstance().log("Server",
-                                          "[INFO] Connection with client closed: " + std::to_string(clientSocket));
-                std::cout << "[INFO] Connection with client closed.\n";
+                logger.log("Server", "[INFO] Connection with client closed: " + std::to_string(clientSocket));
             }
             break;
         }
 
-        // Use RequestRouter to process the request
-        Authentication auth;
-        InventoryManager inventoryManager;
-        OrderManager orderManager;
-        // Pass dependencies to the RequestRouter constructor
-        RequestRouter router(auth, inventoryManager, orderManager);
         std::string response;
         try
         {
             response = router.routeRequest(buffer, clientSocket); // Route the JSON request
+
             // If the response contains "disconnect", break the loop
             if (response.find("disconnect") != std::string::npos)
             {
                 send(clientSocket, response.c_str(), response.size(), 0);
-                // Log the disconnection
-                Logger::getInstance().log("Server", "[INFO] Disconnecting client: " + std::to_string(clientSocket));
+                logger.log("Server", "[INFO] Disconnecting client: " + std::to_string(clientSocket));
                 std::cout << "[INFO] Disconnecting client: " << clientSocket << "\n";
                 break;
             }
@@ -144,7 +138,24 @@ void Server::handleClient(int clientSocket)
 
         // Send the response back to the client
         send(clientSocket, response.c_str(), response.size(), 0);
+
+// Break the loop after processing one request during testing
+#ifdef TESTING
+        break;
+#endif
     }
 
     close(clientSocket); // Close the client socket
+}
+
+void Server::stop()
+{
+    running = false;
+    logger.log("Server", "[INFO] Stopping server...");
+    std::cout << "[INFO] Stopping server...\n";
+}
+
+bool Server::isRunning()
+{
+    return running;
 }

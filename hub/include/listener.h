@@ -11,6 +11,7 @@
 #ifndef LISTENER_H
 #define LISTENER_H
 
+#include "authentication.h"
 #include <cjson/cJSON.h>
 #include <errno.h>
 #include <pthread.h>

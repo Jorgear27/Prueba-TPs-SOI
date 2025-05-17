@@ -45,7 +45,7 @@ class RequestRouter
      * @param sock Socket file descriptor for the client
      * @return std::string Response in JSON format
      */
-    std::string routeRequest(const std::string& jsonData, int sock);
+    virtual std::string routeRequest(const std::string& jsonData, int sock);
 
   private:
     /**
@@ -81,9 +81,9 @@ class RequestRouter
         {"order_status", RequestType::OrderStatusQuery},
         {"cancel_order", RequestType::CancelOrder}};
 
-    Authentication& auth;               // Reference to the authentication instance
-    InventoryManager& inventoryManager; // Reference to the inventory manager instance
-    OrderManager& orderManager;         // Reference to the order manager instance
+    Authentication& auth;               //!< Reference to the authentication instance
+    InventoryManager& inventoryManager; //!< Reference to the inventory manager instance
+    OrderManager& orderManager;         //!< Reference to the order manager instance
 };
 
 #endif

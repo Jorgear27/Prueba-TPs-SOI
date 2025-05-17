@@ -1,3 +1,4 @@
+#include "authentication.h"
 #include "hub.h"
 #include "listener.h"
 #include "orders.h"
@@ -8,11 +9,18 @@
 
 // Function prototypes
 void print_usage(const char* program_name);
+void print_invalid_id(const char* program_name);
 void display_menu(void);
 
 void print_usage(const char* program_name)
 {
     printf("Usage: %s <hub_id> <latitude> <longitude>\n", program_name);
+}
+
+void print_invalid_id(const char* program_name)
+{
+    printf("hub_id format invalid. Usage: Hxxx where xxx are digits.\n");
+    printf("Example: %s H001 40.7128 -74.0060\n", program_name);
 }
 
 void display_menu()
@@ -38,6 +46,13 @@ int main(int argc, char* argv[])
     const char* hub_id = argv[1];
     int latitude = atoi(argv[2]);
     int longitude = atoi(argv[3]);
+
+    // Validate hub ID format
+    if (!isValidHubId(hub_id))
+    {
+        print_invalid_id(argv[0]);
+        return EXIT_FAILURE;
+    }
 
     // Step 1: Connect to the server
     int sock = connect_hub_to_server();

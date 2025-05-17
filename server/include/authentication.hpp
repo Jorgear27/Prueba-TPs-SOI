@@ -40,6 +40,15 @@ class Authentication
 {
   public:
     /**
+     * @brief Construct a new Authentication object with dependency injection.
+     *
+     * @param database Reference to a Database instance (default: Database::getInstance()).
+     */
+    Authentication(Database& database = Database::getInstance()) : database(database)
+    {
+    }
+
+    /**
      * @brief Process client information received in JSON format.
      *
      * @param clientInfo JSON string containing client information.
@@ -65,6 +74,8 @@ class Authentication
      * @return true if the information is valid, false otherwise.
      */
     bool validateClientInfo(const json& message);
+
+    Database& database; // Reference to the Database instance
 };
 
 #endif

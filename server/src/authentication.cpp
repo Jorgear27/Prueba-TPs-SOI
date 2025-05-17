@@ -42,46 +42,21 @@ std::string Authentication::processClientInfo(const std::string& jsonData, int s
 
         while (retryCount < MAX_RETRIES && !success)
         {
-            // Storing the data in Users table of paranoid_db
-            PGconn* conn = Database::getInstance().getConnection();
+            // Use Database to insert or update user info
+            success = database.insertOrUpdateUser(id, latitude, longitude);
 
-            // Build the SQL query with $N for the parameters
-            std::string query = "INSERT INTO users (user_id, latitude, longitude, is_online) "
-                                "VALUES ($1, $2, $3, TRUE) "
-                                "ON CONFLICT (user_id) DO UPDATE "
-                                "SET latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude, is_online = TRUE;";
-
-            // Prepare the parameter values
-            const char* paramValues[3] = {id.c_str(), std::to_string(latitude).c_str(),
-                                          std::to_string(longitude).c_str()};
-
-            // Execute the query
-            PGresult* res = PQexecParams(conn, query.c_str(),
-                                         3,    // number of parameters
-                                         NULL, // parameter types (NULL for text)
-                                         paramValues,
-                                         NULL, // param lengths (NULL for text)
-                                         NULL, // param formats (NULL for text)
-                                         0     // result format: 0 = text
-            );
-
-            // Check the result status
-            if (PQresultStatus(res) == PGRES_COMMAND_OK)
+            if (success)
             {
-                success = true; // Query succeeded
-                Logger::getInstance().log("Authentication", "User info stored in DB for ID = " + id);
+                Logger::getInstance().log("Authentication", "[INFO] User info stored in DB for ID = " + id);
                 std::cout << "[INFO] User info stored in DB for ID = " << id << std::endl;
             }
             else
             {
-                Logger::getInstance().log("Authentication",
-                                          "[ERROR] Failed to process new client: " + std::string(PQerrorMessage(conn)));
-                std::cerr << "[ERROR] Failed to process new client: " << std::string(PQerrorMessage(conn)) << "\n";
+                Logger::getInstance().log("Authentication", "[ERROR] Failed to process new client.");
+                std::cerr << "[ERROR] Failed to process new client.\n";
                 retryCount++;
                 std::this_thread::sleep_for(RETRY_DELAY); // Wait before retrying
             }
-
-            PQclear(res); // Free memory
         }
 
         if (!success)
@@ -114,16 +89,11 @@ void Authentication::handleClientDisconnection(const std::string& jsonData, int 
     Logger::getInstance().log("Authentication", "[INFO] Disconnect request received from: " + user_id);
     std::cout << "[INFO] Disconnect request received from: " << user_id << "\n";
 
-    // Update the database to set the user as offline
-    PGconn* conn = Database::getInstance().getConnection();
-    std::string query = "UPDATE users SET is_online = FALSE WHERE user_id ='" + user_id + "';";
-    std::cout << "LLEGUE HASTA DESP DE LA QUERY DE FALSE: \n";
-    PGresult* res = PQexec(conn, query.c_str());
-    if (PQresultStatus(res) != PGRES_COMMAND_OK)
+    // Use Database to update user online status
+    if (!database.updateUserOnlineStatus(user_id, false))
     {
-        Logger::getInstance().log("Authentication",
-                                  "[ERROR] Failed to update user status in DB: " + std::string(PQerrorMessage(conn)));
-        std::cerr << "[ERROR] Failed to update user status in DB: " << std::string(PQerrorMessage(conn)) << "\n";
+        Logger::getInstance().log("Authentication", "[ERROR] Failed to update user status in DB.");
+        std::cerr << "[ERROR] Failed to update user status in DB.\n";
     }
     else
     {
@@ -179,13 +149,6 @@ bool Authentication::validateClientInfo(const json& message)
             std::cerr << "[ERROR] Warehouse ID is empty.\n";
             return false;
         }
-
-        std::string warehouse_id = message.at("warehouse_id").get<std::string>();
-        if (warehouse_id[0] != 'W')
-        {
-            std::cerr << "[ERROR] Warehouse ID must start with 'W'.\n";
-            return false;
-        }
     }
     else if (message.contains("hub_id") && !message.at("hub_id").is_null())
     {
@@ -193,12 +156,6 @@ bool Authentication::validateClientInfo(const json& message)
         if (message.at("hub_id").empty())
         {
             std::cerr << "[ERROR] Hub ID is empty.\n";
-            return false;
-        }
-        std::string hub_id = message.at("hub_id").get<std::string>();
-        if (hub_id[0] != 'H')
-        {
-            std::cerr << "[ERROR] Hub ID must start with 'H'.\n";
             return false;
         }
     }

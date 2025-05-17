@@ -1,134 +1,162 @@
 #include "inventory.hpp"
-#include <gtest/gtest.h>
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
-// Test for adding a new warehouse
-TEST(InventoryManagerTest, AddNewWarehouse)
+// Mock classes for dependencies
+class MockLogger : public Logger
 {
-    InventoryManager inventoryManager;
-    inventoryManager.handleNewWarehouse("W001", {{"item_type", 0}, {"stock_level", 100}});
+  public:
+    MOCK_METHOD(void, log, (const std::string& component, const std::string& message), (override));
+};
 
-    // Verify the warehouse was added
-    std::string warehouseId = inventoryManager.findWarehouseForItem(0, 1); // No items yet
-    EXPECT_EQ(warehouseId, "");                                            // No items in the warehouse
+class MockDatabase : public Database
+{
+  public:
+    MOCK_METHOD(bool, insertOrUpdateInventory, (const std::string& userId, int itemType, int stockLevel, int threshold),
+                (override));
+    MOCK_METHOD(std::string, findWarehouseForItem, (int itemType, int quantityNeeded), (override));
+};
+
+class InventoryManagerTest : public ::testing::Test
+{
+  protected:
+    MockLogger mockLogger;
+    MockDatabase mockDatabase;
+    InventoryManager inventoryManager{mockLogger, mockDatabase};
+};
+
+// Test for handleInventoryUpdate
+TEST_F(InventoryManagerTest, HandleInventoryUpdate_Success)
+{
+    std::string jsonData = R"({
+                "user_id": "user123",
+                "inventory": [
+                        {"item_type": 1, "stock_level": 100, "threshold": 50},
+                        {"item_type": 2, "stock_level": 200, "threshold": 100}
+                ]
+        })";
+
+    EXPECT_CALL(mockDatabase, insertOrUpdateInventory("user123", 1, 100, 50)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(mockDatabase, insertOrUpdateInventory("user123", 2, 200, 100)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(mockLogger,
+                log("InventoryManager", ::testing::StartsWith("[INFO] Inventory updated for user: user123")));
+
+    inventoryManager.handleInventoryUpdate(jsonData);
 }
 
-// Test for inventory update
-TEST(InventoryManagerTest, InventoryUpdate)
+// Test for handleInventoryUpdate with failure
+TEST_F(InventoryManagerTest, HandleInventoryUpdate_Failure)
 {
-    InventoryManager inventoryManager;
-    std::string updateJson = R"({
-        "user_id": "W001",
-        "timestamp": "2025-04-01T12:10:00Z",
-        "inventory": [
-            { "item_type": 0, "stock_level": 100 },
-            { "item_type": 1, "stock_level": 50 }
-        ]
-    })";
+    std::string jsonData = R"({
+                "user_id": "user123",
+                "inventory": [
+                        {"item_type": 1, "stock_level": 100, "threshold": 50}
+                ]
+        })";
 
-    inventoryManager.handleInventoryUpdate(updateJson);
+    EXPECT_CALL(mockDatabase, insertOrUpdateInventory("user123", 1, 100, 50)).WillOnce(::testing::Return(false));
+    EXPECT_CALL(mockLogger,
+                log("InventoryManager", ::testing::StartsWith("[ERROR] Failed to update inventory for user: user123")));
 
-    // Verify the inventory was updated
-    std::string warehouseId = inventoryManager.findWarehouseForItem(0, 50);
-    EXPECT_EQ(warehouseId, "W001");
+    inventoryManager.handleInventoryUpdate(jsonData);
 }
 
-// Test for finding a warehouse
-TEST(InventoryManagerTest, FindWarehouse)
+// Test for handleRestockNotice
+TEST_F(InventoryManagerTest, HandleRestockNotice_Success)
 {
-    InventoryManager inventoryManager;
-    std::string updateJson = R"({
-        "user_id": "W001",
-        "inventory": [
-            { "item_type": 0, "stock_level": 100 }
-        ]
-    })";
+    std::string jsonData = R"({
+                "user_id": "user123",
+                "item_type": 1,
+                "stock_level": 150
+        })";
 
-    inventoryManager.handleInventoryUpdate(updateJson);
+    EXPECT_CALL(mockLogger,
+                log("InventoryManager", ::testing::StartsWith("[INFO] Restock notice received for user: user123")));
 
-    // Verify the warehouse can fulfill the request
-    std::string warehouseId = inventoryManager.findWarehouseForItem(0, 50);
-    EXPECT_EQ(warehouseId, "W001");
+    inventoryManager.handleRestockNotice(jsonData);
 }
 
-// Test for restock notice
-TEST(InventoryManagerTest, RestockNotice)
+// Test for findWarehouseForItem
+TEST_F(InventoryManagerTest, FindWarehouseForItem_Success)
 {
-    InventoryManager inventoryManager;
-    std::string restockJson = R"({
-        "user_id": "W001",
-        "timestamp": "2025-04-01T12:10:00Z",
-        "inventory": [
-            { "item_type": 0, "stock_level": 200 },
-            { "item_type": 1, "stock_level": 150 }
-        ]
-    })";
+    int itemType = 1;
+    int quantityNeeded = 50;
+    std::string warehouseId = "warehouse123";
 
-    inventoryManager.handleRestockNotice(restockJson);
+    EXPECT_CALL(mockDatabase, findWarehouseForItem(itemType, quantityNeeded)).WillOnce(::testing::Return(warehouseId));
 
-    // Verify the inventory was updated
-    std::string warehouseId = inventoryManager.findWarehouseForItem(0, 200);
-    EXPECT_EQ(warehouseId, "W001");
+    std::string result = inventoryManager.findWarehouseForItem(itemType, quantityNeeded);
+    EXPECT_EQ(result, warehouseId);
 }
 
-// Test for invalid JSON input
-TEST(InventoryManagerTest, InvalidJson)
+// Test for findWarehouseForItem with no warehouse found
+TEST_F(InventoryManagerTest, FindWarehouseForItem_NoWarehouseFound)
 {
-    InventoryManager inventoryManager;
-    std::string invalidJson = R"({
-        "user_id": "W001",
-        "inventory": [
-            { "item_type": 0 }
-        ]
-    })"; // Missing "stock_level"
+    int itemType = 1;
+    int quantityNeeded = 50;
 
-    EXPECT_NO_THROW(inventoryManager.handleInventoryUpdate(invalidJson));
+    EXPECT_CALL(mockDatabase, findWarehouseForItem(itemType, quantityNeeded)).WillOnce(::testing::Return(""));
+    EXPECT_CALL(mockLogger, log("InventoryManager", ::testing::StartsWith("[INFO] No warehouse found for item type:")));
+
+    std::string result = inventoryManager.findWarehouseForItem(itemType, quantityNeeded);
+    EXPECT_EQ(result, "");
 }
 
-// Test for multiple warehouses
-TEST(InventoryManagerTest, MultipleWarehouses)
+// Test for getInstance method
+TEST(InventoryManagerSingletonTest, GetInstance_ReturnsSameInstance)
 {
-    InventoryManager inventoryManager;
+    InventoryManager& instance1 = InventoryManager::getInstance();
+    InventoryManager& instance2 = InventoryManager::getInstance();
 
-    // Add inventory for W001
-    std::string updateJson1 = R"({
-        "user_id": "W001",
-        "timestamp": "2025-04-01T12:10:00Z",
-        "inventory": [
-            { "item_type": 0, "stock_level": 100 }
-        ]
-    })";
-    inventoryManager.handleInventoryUpdate(updateJson1);
-
-    // Add inventory for W002
-    std::string updateJson2 = R"({
-        "user_id": "W002",
-        "timestamp": "2025-04-01T12:10:00Z",
-        "inventory": [
-            { "item_type": 0, "stock_level": 200 }
-        ]
-    })";
-    inventoryManager.handleInventoryUpdate(updateJson2);
-
-    // Verify W002 is selected for quantities larger than W001
-    std::string warehouseId = inventoryManager.findWarehouseForItem(0, 150);
-    EXPECT_EQ(warehouseId, "W002");
+    // Verify that both references point to the same instance
+    EXPECT_EQ(&instance1, &instance2);
 }
 
-// Test for no warehouse available
-TEST(InventoryManagerTest, NoWarehouseAvailable)
+TEST_F(InventoryManagerTest, HandleInventoryUpdate_ExceptionThrown)
 {
-    InventoryManager inventoryManager;
+    std::string jsonData = R"({
+                "user_id": "user123",
+                "inventory": [
+                        {"item_type": 1, "stock_level": 100, "threshold": 50}
+                ]
+        })";
 
-    // Add inventory for W001
-    std::string updateJson = R"({
-        "user_id": "W001",
-        "inventory": [
-            { "item_type": 0, "stock_level": 50 }
-        ]
-    })";
-    inventoryManager.handleInventoryUpdate(updateJson);
+    // Simulate an exception when calling insertOrUpdateInventory
+    EXPECT_CALL(mockDatabase, insertOrUpdateInventory("user123", 1, 100, 50))
+        .WillOnce(::testing::Throw(std::runtime_error("Database error")));
 
-    // Verify no warehouse can fulfill the request
-    std::string warehouseId = inventoryManager.findWarehouseForItem(0, 100);
-    EXPECT_EQ(warehouseId, "");
+    EXPECT_CALL(mockLogger, log("InventoryManager",
+                                ::testing::StartsWith("[ERROR] Exception occurred while handling inventory update:")));
+
+    inventoryManager.handleInventoryUpdate(jsonData);
+}
+
+TEST_F(InventoryManagerTest, HandleRestockNotice_ExceptionThrown)
+{
+    std::string invalidJsonData = R"({
+                "user_id": "user123",
+                "item_type": "invalid_type", // Invalid type for item_type
+                "stock_level": 150
+        })";
+
+    EXPECT_CALL(mockLogger, log("InventoryManager",
+                                ::testing::StartsWith("[ERROR] Exception occurred while handling restock notice:")));
+
+    inventoryManager.handleRestockNotice(invalidJsonData);
+}
+
+TEST_F(InventoryManagerTest, FindWarehouseForItem_ExceptionThrown)
+{
+    int itemType = 1;
+    int quantityNeeded = 50;
+
+    // Simulate an exception when calling findWarehouseForItem
+    EXPECT_CALL(mockDatabase, findWarehouseForItem(itemType, quantityNeeded))
+        .WillOnce(::testing::Throw(std::runtime_error("Database query error")));
+
+    EXPECT_CALL(mockLogger,
+                log("InventoryManager", ::testing::StartsWith("[ERROR] Exception occurred while finding warehouse:")));
+
+    std::string result = inventoryManager.findWarehouseForItem(itemType, quantityNeeded);
+    EXPECT_EQ(result, ""); // Expect an empty string as the return value
 }

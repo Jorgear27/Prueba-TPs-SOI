@@ -52,7 +52,7 @@ class Logger
     /**
      * @brief Destructor that closes the log file.
      */
-    ~Logger();
+    virtual ~Logger();
 
   private:
     // Delete copy constructor and assignment operator

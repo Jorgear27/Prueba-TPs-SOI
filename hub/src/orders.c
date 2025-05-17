@@ -1,21 +1,7 @@
 #include "orders.h"
-#include "hub.h"
-#include <cjson/cJSON.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
 
 // Static variable to keep track of the number of orders created by the hub
 static int order_counter = 0;
-
-// Helper function to generate the current timestamp in ISO 8601 format
-void generate_timestamp_hub(char* buffer, size_t size)
-{
-    time_t now = time(NULL);
-    struct tm* t = gmtime(&now);
-    strftime(buffer, size, "%Y-%m-%dT%H:%M:%SZ", t);
-}
 
 void handle_create_order(int sock, const char* hub_id)
 {
@@ -162,29 +148,6 @@ void handle_query_order_status(int sock, const char* hub_id)
     // Clean up
     free(query_message);
     cJSON_Delete(query);
-}
-
-char* create_client_info_hub(const char* hub_id, int latitude, int longitude)
-{
-    cJSON* json_obj = cJSON_CreateObject();
-
-    // Generate the current timestamp
-    char timestamp[MAX_TIMESTAMP_LENGTH];
-    generate_timestamp_hub(timestamp, sizeof(timestamp));
-
-    cJSON_AddStringToObject(json_obj, "type", "client_info");
-    cJSON_AddStringToObject(json_obj, "timestamp", timestamp);
-    cJSON_AddStringToObject(json_obj, "hub_id", hub_id);
-
-    cJSON* location = cJSON_CreateObject();
-    cJSON_AddNumberToObject(location, "latitude", latitude);
-    cJSON_AddNumberToObject(location, "longitude", longitude);
-    cJSON_AddItemToObject(json_obj, "location", location);
-
-    char* result = cJSON_PrintUnformatted(json_obj);
-
-    cJSON_Delete(json_obj); // Free JSON object
-    return result;
 }
 
 char* create_order_request(const char* order_id, const char* hub_id, const char* timestamp, const char* items_needed)

@@ -53,8 +53,11 @@ class Server
     /**
      * @brief Construct a new Server object
      *
+     * @param logger Reference to the logger instance
+     * @param router Reference to the RequestRouter instance
      */
-    Server();
+    Server(Logger& logger, RequestRouter& router);
+
     /**
      * @brief Destroy the Server object
      *
@@ -75,14 +78,6 @@ class Server
      */
     void run();
 
-  private:
-    /**
-     * @brief Allow the server test class to access private members.
-     *
-     */
-    friend class ServerTest_HandleClient_Test;
-    friend class ServerTest_HandleClientDisconnection_Test;
-
     /**
      * @brief Handle incoming client connections.
      *
@@ -96,6 +91,25 @@ class Server
      * @param signal Signal number
      */
     static void signalHandler(int signal);
+
+    /**
+     * @brief Stop the server gracefully.
+     *
+     */
+    void stop(void);
+
+    /**
+     * @brief Check if the server is running.
+     *
+     * @return true if the server is running
+     * @return false if the server is stopped
+     */
+    bool isRunning(void);
+
+  private:
+    Logger& logger;        //!< Reference to the logger instance
+    RequestRouter& router; //!< Reference to the RequestRouter instance
+    bool running = true;   //!< Flag to control the server loop
 };
 
 #endif

@@ -11,6 +11,8 @@
 #ifndef HUB_H
 #define HUB_H
 
+#include "authentication.h"
+#include "orders.h"
 #include <arpa/inet.h>
 #include <cjson/cJSON.h>
 #include <errno.h>
