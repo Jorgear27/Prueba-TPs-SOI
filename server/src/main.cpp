@@ -22,7 +22,8 @@ int main()
 
     // Create dependencies for the Server
     Logger& logger = Logger::getInstance();
-    Authentication auth;
+    Sender& sender = Sender::getInstance();
+    Authentication auth(db, sender);
     InventoryManager inventoryManager;
     OrderManager orderManager;
     RequestRouter router(auth, inventoryManager, orderManager);

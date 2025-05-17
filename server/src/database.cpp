@@ -67,8 +67,31 @@ PGconn* Database::getConnection(const std::string& connectionString)
     std::cerr << "[ERROR] Database connection lost. Attempting to reconnect...\n";
     disconnect(); // Close the existing connection if any
 
-    // Reconnect to the database
-    conn = PQconnectdb(connectionString.c_str());
+    int retryCount = 0;
+    const int maxRetries = 3; // Maximum number of reconnection attempts
+
+    while (retryCount < maxRetries)
+    {
+        // Attempt to reconnect
+        conn = PQconnectdb(connectionString.c_str());
+        if (PQstatus(conn) == CONNECTION_OK)
+        {
+            // Log the success message
+            Logger::getInstance().log("Database", "[INFO] Reconnected to database successfully.");
+            std::cout << "[INFO] Reconnected to database successfully.\n";
+            return conn; // Return the new connection if successful
+        }
+        else
+        {
+            // Log the error message
+            Logger::getInstance().log("Database", "[ERROR] Reconnection attempt " + std::to_string(retryCount + 1) +
+                                                      " failed: " + std::string(PQerrorMessage(conn)));
+            std::cerr << "[ERROR] Reconnection attempt " << retryCount + 1 << " failed: " << PQerrorMessage(conn)
+                      << "\n";
+            retryCount++;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Wait before retrying
+        }
+    }
 
     if (PQstatus(conn) != CONNECTION_OK)
     {
@@ -98,7 +121,7 @@ bool Database::insertOrUpdateOrder(const std::string& orderId, const std::string
         if (PQresultStatus(res) != PGRES_COMMAND_OK)
         {
             Logger::getInstance().log("Database",
-                                      "Error inserting/updating order: " + std::string(PQerrorMessage(conn)));
+                                      "[ERROR] Error inserting/updating order: " + std::string(PQerrorMessage(conn)));
             PQclear(res);
             return false;
         }
@@ -107,7 +130,6 @@ bool Database::insertOrUpdateOrder(const std::string& orderId, const std::string
     }
     catch (const std::exception& e)
     {
-        Logger::getInstance().log("Database", "Exception in insertOrUpdateOrder: " + std::string(e.what()));
         return false;
     }
 }
@@ -121,7 +143,8 @@ std::string Database::getOrderStatus(const std::string& orderId)
 
         if (PQresultStatus(res) != PGRES_TUPLES_OK)
         {
-            Logger::getInstance().log("Database", "Error fetching order status: " + std::string(PQerrorMessage(conn)));
+            Logger::getInstance().log("Database",
+                                      "[ERROR] Error fetching order status: " + std::string(PQerrorMessage(conn)));
             PQclear(res);
             return "";
         }
@@ -132,7 +155,6 @@ std::string Database::getOrderStatus(const std::string& orderId)
     }
     catch (const std::exception& e)
     {
-        Logger::getInstance().log("Database", "Exception in getOrderStatus: " + std::string(e.what()));
         return "";
     }
 }
@@ -146,7 +168,8 @@ bool Database::updateOrderStatus(const std::string& orderId, const std::string& 
 
         if (PQresultStatus(res) != PGRES_COMMAND_OK)
         {
-            Logger::getInstance().log("Database", "Error updating order status: " + std::string(PQerrorMessage(conn)));
+            Logger::getInstance().log("Database",
+                                      "[ERROR] Error updating order status: " + std::string(PQerrorMessage(conn)));
             PQclear(res);
             return false;
         }
@@ -155,7 +178,6 @@ bool Database::updateOrderStatus(const std::string& orderId, const std::string& 
     }
     catch (const std::exception& e)
     {
-        Logger::getInstance().log("Database", "Exception in updateOrderStatus: " + std::string(e.what()));
         return false;
     }
 }
@@ -180,9 +202,10 @@ nlohmann::json Database::getOrderDetails(const std::string& orderId)
 
         if (PQresultStatus(res) != PGRES_TUPLES_OK)
         {
-            Logger::getInstance().log("Database", "Error fetching order details: " + std::string(PQerrorMessage(conn)));
+            Logger::getInstance().log("Database",
+                                      "[ERROR] Error fetching order details: " + std::string(PQerrorMessage(conn)));
             PQclear(res);
-            return nlohmann::json{};
+            return nlohmann::json{{"status", "error"}, {"message", "Error fetching order details"}};
         }
 
         if (PQntuples(res) == 0)
@@ -202,7 +225,6 @@ nlohmann::json Database::getOrderDetails(const std::string& orderId)
     }
     catch (const std::exception& e)
     {
-        Logger::getInstance().log("Database", "Exception in getOrderDetails: " + std::string(e.what()));
         return nlohmann::json{{"status", "error"}, {"message", "Failed to process get order details"}};
     }
 }
@@ -219,7 +241,7 @@ std::vector<std::string> Database::getApprovedOrders()
         if (PQresultStatus(res) != PGRES_TUPLES_OK)
         {
             Logger::getInstance().log("Database",
-                                      "Error fetching approved orders: " + std::string(PQerrorMessage(conn)));
+                                      "[ERROR] Error fetching approved orders: " + std::string(PQerrorMessage(conn)));
             PQclear(res);
             return approvedOrders;
         }
@@ -234,7 +256,6 @@ std::vector<std::string> Database::getApprovedOrders()
     }
     catch (const std::exception& e)
     {
-        Logger::getInstance().log("Database", "Exception in getApprovedOrders: " + std::string(e.what()));
     }
 
     return approvedOrders;
@@ -256,7 +277,7 @@ bool Database::insertOrUpdateUser(const std::string& userId, double latitude, do
         if (PQresultStatus(res) != PGRES_COMMAND_OK)
         {
             Logger::getInstance().log("Database",
-                                      "Error inserting/updating user: " + std::string(PQerrorMessage(conn)));
+                                      "[ERROR] Error inserting/updating user: " + std::string(PQerrorMessage(conn)));
             PQclear(res);
             return false;
         }
@@ -266,7 +287,6 @@ bool Database::insertOrUpdateUser(const std::string& userId, double latitude, do
     }
     catch (const std::exception& e)
     {
-        Logger::getInstance().log("Database", "Exception in insertOrUpdateUser: " + std::string(e.what()));
         return false;
     }
 }
@@ -282,8 +302,8 @@ bool Database::updateUserOnlineStatus(const std::string& userId, bool isOnline)
 
         if (PQresultStatus(res) != PGRES_COMMAND_OK)
         {
-            Logger::getInstance().log("Database",
-                                      "Error updating user online status: " + std::string(PQerrorMessage(conn)));
+            Logger::getInstance().log("Database", "[ERROR] Error updating user online status: " +
+                                                      std::string(PQerrorMessage(conn)));
             PQclear(res);
             return false;
         }
@@ -293,7 +313,6 @@ bool Database::updateUserOnlineStatus(const std::string& userId, bool isOnline)
     }
     catch (const std::exception& e)
     {
-        Logger::getInstance().log("Database", "Exception in updateUserOnlineStatus: " + std::string(e.what()));
         return false;
     }
 }
@@ -313,8 +332,8 @@ bool Database::insertOrUpdateInventory(const std::string& userId, int itemType, 
 
         if (PQresultStatus(res) != PGRES_COMMAND_OK)
         {
-            Logger::getInstance().log("Database",
-                                      "Error inserting/updating inventory: " + std::string(PQerrorMessage(conn)));
+            Logger::getInstance().log("Database", "[ERROR] Error inserting/updating inventory: " +
+                                                      std::string(PQerrorMessage(conn)));
             PQclear(res);
             return false;
         }
@@ -324,7 +343,6 @@ bool Database::insertOrUpdateInventory(const std::string& userId, int itemType, 
     }
     catch (const std::exception& e)
     {
-        Logger::getInstance().log("Database", "Exception in insertOrUpdateInventory: " + std::string(e.what()));
         return false;
     }
 }
@@ -344,7 +362,7 @@ std::string Database::findWarehouseForItem(int itemType, int quantityNeeded)
         if (PQresultStatus(res) != PGRES_TUPLES_OK)
         {
             Logger::getInstance().log("Database",
-                                      "Error finding warehouse for item: " + std::string(PQerrorMessage(conn)));
+                                      "[ERROR] Error finding warehouse for item: " + std::string(PQerrorMessage(conn)));
             PQclear(res);
             return "";
         }
@@ -360,7 +378,6 @@ std::string Database::findWarehouseForItem(int itemType, int quantityNeeded)
     }
     catch (const std::exception& e)
     {
-        Logger::getInstance().log("Database", "Exception in findWarehouseForItem: " + std::string(e.what()));
         return "";
     }
 }

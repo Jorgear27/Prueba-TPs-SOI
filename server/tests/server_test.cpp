@@ -3,6 +3,19 @@
 #include "gtest/gtest.h"
 
 // Mock classes for dependencies
+class MockDatabase : public Database
+{
+  public:
+    MOCK_METHOD(bool, insertOrUpdateUser, (const std::string& userId, double latitude, double longitude), (override));
+    MOCK_METHOD(bool, updateUserOnlineStatus, (const std::string& userId, bool isOnline), (override));
+};
+
+class MockSender : public Sender
+{
+  public:
+    MOCK_METHOD(void, removeConnection, (const std::string& userId), (override));
+};
+
 class MockLogger : public Logger
 {
   public:
@@ -25,7 +38,9 @@ class ServerTest : public ::testing::Test
 {
   protected:
     MockLogger mockLogger;
-    Authentication mockAuth;
+    MockDatabase mockDb;
+    MockSender mockSender;
+    Authentication mockAuth{mockDb, mockSender}; // Pass mock dependencies to Authentication
     InventoryManager mockInventoryManager;
     OrderManager mockOrderManager;
     MockRequestRouter mockRouter;

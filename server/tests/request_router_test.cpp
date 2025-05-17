@@ -11,9 +11,26 @@ using ::testing::Return;
 using json = nlohmann::json;
 
 // Mock classes for dependencies
+class MockDatabase : public Database
+{
+  public:
+    MOCK_METHOD(bool, insertOrUpdateUser, (const std::string& userId, double latitude, double longitude), (override));
+    MOCK_METHOD(bool, updateUserOnlineStatus, (const std::string& userId, bool isOnline), (override));
+};
+
+class MockSender : public Sender
+{
+  public:
+    MOCK_METHOD(void, removeConnection, (const std::string& userId), (override));
+};
+
 class MockAuthentication : public Authentication
 {
   public:
+    MockAuthentication(Database& db, Sender& sender) : Authentication(db, sender)
+    {
+    }
+
     MOCK_METHOD(std::string, processClientInfo, (const std::string&, int), (override));
     MOCK_METHOD(void, handleClientDisconnection, (const std::string&, int), (override));
 };
@@ -39,14 +56,16 @@ class MockOrderManager : public OrderManager
 class RequestRouterTest : public ::testing::Test
 {
   protected:
-    MockAuthentication mockAuth;
+    MockDatabase mockDb;
+    MockSender mockSender;
+    MockAuthentication mockAuth{mockDb, mockSender}; // Pass mock dependencies to MockAuthentication
     MockInventoryManager mockInventoryManager;
     MockOrderManager mockOrderManager;
     RequestRouter router;
 
     RequestRouterTest() : router(mockAuth, mockInventoryManager, mockOrderManager)
     {
-    } // Inject mocks
+    }
 };
 
 // Test for ClientInfo request

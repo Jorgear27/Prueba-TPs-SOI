@@ -31,7 +31,7 @@ std::string Authentication::processClientInfo(const std::string& jsonData, int s
         double longitude = clientInfo.at("location").at("longitude");
 
         // Add the client connection to the registry
-        Sender::getInstance().addConnection(id, sock);
+        sender.addConnection(id, sock);
         Logger::getInstance().log("Authentication",
                                   "[INFO] Added new client connection: " + id + " at socket " + std::to_string(sock));
         std::cout << "[INFO] Added new client connection: " << id << " at socket " << sock << "\n";
@@ -102,7 +102,7 @@ void Authentication::handleClientDisconnection(const std::string& jsonData, int 
     }
 
     // Remove the client connection from the registry
-    Sender::getInstance().removeConnection(user_id);
+    sender.removeConnection(user_id);
     Logger::getInstance().log("Authentication", "[INFO] Removed client connection: " + user_id);
     std::cout << "[INFO] Removed client connection: " << user_id << "\n";
 }

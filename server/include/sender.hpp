@@ -49,7 +49,7 @@ class Sender
      *
      * @param clientId
      */
-    void removeConnection(const std::string& clientId);
+    virtual void removeConnection(const std::string& clientId);
 
     /**
      * @brief Get the singleton instance of the Sender class.

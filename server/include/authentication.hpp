@@ -28,8 +28,8 @@
  */
 using json = nlohmann::json;
 
-#define MAX_RETRIES 3                       ///< Maximum number of retries for database operations
-#define RETRY_DELAY std::chrono::seconds(1) ///< Delay between retries for database operations
+#define MAX_RETRIES 3                              ///< Maximum number of retries for database operations
+#define RETRY_DELAY std::chrono::milliseconds(100) ///< Delay between retries for database operations
 
 /**
  * @brief This class handles receiving and validating client information
@@ -43,8 +43,9 @@ class Authentication
      * @brief Construct a new Authentication object with dependency injection.
      *
      * @param database Reference to a Database instance (default: Database::getInstance()).
+     * @param sender Reference to a Sender instance (default: Sender::getInstance()).
      */
-    Authentication(Database& database = Database::getInstance()) : database(database)
+    Authentication(Database& db, Sender& sender = Sender::getInstance()) : database(db), sender(sender)
     {
     }
 
@@ -75,7 +76,8 @@ class Authentication
      */
     bool validateClientInfo(const json& message);
 
-    Database& database; // Reference to the Database instance
+    Database& database; //!< The database instance for database operations
+    Sender& sender;     //!< The sender instance for managing client connections
 };
 
 #endif
