@@ -10,10 +10,6 @@ on:
     branches:
       - main
       - develop
-      - feature/*
-      - bugfix/*
-      - hotfix/*
-      - test/*
 
 jobs:
   build:
@@ -50,11 +46,11 @@ jobs:
           sudo -u postgres psql -d paranoid_db -c "\d inventory"
           sudo -u postgres psql -d paranoid_db -c "\d orders"
 
-    - name: Reapply PostgreSQL permissions
-      run: |
-        sudo -u postgres psql -d paranoid_db -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO server;"
-        sudo -u postgres psql -d paranoid_db -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO server;"
-        sudo -u postgres psql -d paranoid_db -c "GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO server;"
+      - name: Reapply PostgreSQL permissions
+        run: |
+          sudo -u postgres psql -d paranoid_db -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO server;"
+          sudo -u postgres psql -d paranoid_db -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO server;"
+          sudo -u postgres psql -d paranoid_db -c "GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO server;"
 
       - name: Debug PostgreSQL state
         run: |
@@ -62,13 +58,13 @@ jobs:
           sudo -u postgres psql -d paranoid_db -c "\d users"
           sudo -u postgres psql -d paranoid_db -c "\z users"
 
-    - name: Verify current database and user
-      run: |
-        sudo -u postgres psql -d paranoid_db -c "SELECT current_database(), current_user;"
+      - name: Verify current database and user
+        run: |
+          sudo -u postgres psql -d paranoid_db -c "SELECT current_database(), current_user;"
 
-    - name: Verify table permissions
-      run: |
-        sudo -u postgres psql -d paranoid_db -c "\z"
+      - name: Verify table permissions
+        run: |
+          sudo -u postgres psql -d paranoid_db -c "\z"
 
       - name: Run style check
         uses: ./.github/actions/style
@@ -84,4 +80,3 @@ jobs:
 
       - name: Run Valgrind on tests
         uses: ./.github/actions/valgrind_check
-
