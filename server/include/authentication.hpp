@@ -40,10 +40,10 @@ class Authentication
 {
   public:
     /**
-     * @brief Construct a new Authentication object with dependency injection.
+     * @brief Constructor for the Authentication class.
      *
-     * @param database Reference to a Database instance (default: Database::getInstance()).
-     * @param sender Reference to a Sender instance (default: Sender::getInstance()).
+     * @param db Reference to the Database object for database operations.
+     * @param sender Reference to the Sender object for managing client connections.
      */
     Authentication(Database& db, Sender& sender = Sender::getInstance()) : database(db), sender(sender)
     {
