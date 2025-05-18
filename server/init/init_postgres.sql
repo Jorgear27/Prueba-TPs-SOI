@@ -1,7 +1,3 @@
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO server;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO server;
-GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO server;
-
 CREATE DATABASE paranoid_db;
 
 -- Connect to the database
@@ -35,6 +31,10 @@ CREATE TABLE IF NOT EXISTS orders (
     CHECK (user_id LIKE 'H%'), -- Validate that the user_id is a hub
     PRIMARY KEY (order_id, item_type) -- Composite primary key to allow multiple items per order
 );
+
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO server;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO server;
+GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO server;
 
 -- Status:
 -- Logged: Order has been logged in the system
