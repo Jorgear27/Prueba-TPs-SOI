@@ -34,9 +34,6 @@ jobs:
           sudo -u postgres psql -c "CREATE USER server WITH PASSWORD 'server123';"
           sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE paranoid_db TO server;"
           sudo -u postgres psql -d paranoid_db -f server/init/init_postgres.sql
-          sudo -u postgres psql -d paranoid_db -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO server;"
-          sudo -u postgres psql -d paranoid_db -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO server;"
-          sudo -u postgres psql -d paranoid_db -c "GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO server;"
 
       - name: Run style check
         uses: ./.github/actions/style
