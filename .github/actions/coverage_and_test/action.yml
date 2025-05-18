@@ -40,12 +40,12 @@ runs:
         # cut finnaly creates a list using '%' as a delimiter (-d '%') and keeps first value (-f 1)
         COVERAGE_RESULT=$(grep "TOTAL" $ERROR_FILE_FLAG | awk '{print $NF}' | cut -d '%' -f 1)
 
-        # Coverage lines GT 30
-        if [ "$(echo "$COVERAGE_RESULT > 30" | bc)" -eq 1 ]; then
-            echo "Coverage is greater than 30%. Nice!"
+        # Coverage lines GT 80
+        if [ "$(echo "$COVERAGE_RESULT > 80" | bc)" -eq 1 ]; then
+            echo "Coverage is greater than 80%. Nice!"
             exit 0
         else
-            echo "Error: Coverage is less than or equal to 30%"
+            echo "Error: Coverage is less than or equal to 80%"
             exit 1
         fi
 
