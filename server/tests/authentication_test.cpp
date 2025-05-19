@@ -63,7 +63,7 @@ TEST_F(AuthenticationManagerTest, InvalidLatitudeLongitude)
 TEST_F(AuthenticationManagerTest, ValidHubInfo)
 {
     std::string validJson = R"({
-        "type": "client_info", 
+        "type": "client_info",
         "timestamp": "2025-04-01T12:01:00Z",
         "hub_id": "H001",
         "location": {
@@ -82,7 +82,7 @@ TEST_F(AuthenticationManagerTest, ValidHubInfo)
 TEST_F(AuthenticationManagerTest, ValidWhInfo)
 {
     std::string validJson = R"({
-        "type": "client_info", 
+        "type": "client_info",
         "timestamp": "2025-04-01T12:01:00Z",
         "warehouse_id": "W001",
         "location": {
@@ -101,7 +101,7 @@ TEST_F(AuthenticationManagerTest, ValidWhInfo)
 TEST_F(AuthenticationManagerTest, MissingTimestamp)
 {
     std::string invalidJson = R"({
-        "type": "client_info", 
+        "type": "client_info",
         "hub_id": "H001",
         "location": {
             "latitude": 40.7128,
@@ -117,7 +117,7 @@ TEST_F(AuthenticationManagerTest, MissingTimestamp)
 TEST_F(AuthenticationManagerTest, MissingClientId)
 {
     std::string invalidJson = R"({
-        "type": "client_info", 
+        "type": "client_info",
         "timestamp": "2025-04-01T12:01:00Z",
         "location": {
             "latitude": 40.7128,
@@ -133,7 +133,7 @@ TEST_F(AuthenticationManagerTest, MissingClientId)
 TEST_F(AuthenticationManagerTest, MissingLocation)
 {
     std::string invalidJson = R"({
-        "type": "client_info", 
+        "type": "client_info",
         "timestamp": "2025-04-01T12:01:00Z",
         "hub_id": "H001"
     })";
@@ -163,7 +163,7 @@ TEST_F(AuthenticationManagerTest, InvalidJsonFormat)
 TEST_F(AuthenticationManagerTest, DatabaseRetriesAndFails)
 {
     std::string validJson = R"({
-        "type": "client_info", 
+        "type": "client_info",
         "timestamp": "2025-04-01T12:01:00Z",
         "hub_id": "H001",
         "location": {
@@ -184,7 +184,7 @@ TEST_F(AuthenticationManagerTest, DatabaseRetriesAndFails)
 TEST_F(AuthenticationManagerTest, DatabaseFailsThenSucceeds)
 {
     std::string validJson = R"({
-        "type": "client_info", 
+        "type": "client_info",
         "timestamp": "2025-04-01T12:01:00Z",
         "hub_id": "H001",
         "location": {

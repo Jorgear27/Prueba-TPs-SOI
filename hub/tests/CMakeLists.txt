@@ -38,7 +38,7 @@ set(SOURCES4
 add_executable(hub_test ${SOURCES1})
 add_executable(listener_test ${SOURCES2})
 add_executable(orders_test ${SOURCES3})
-add_executable(authentication_hub_test ${SOURCES1})
+add_executable(authentication_hub_test ${SOURCES4})
 
 # Define the TESTING macro
 target_compile_definitions(hub_test PRIVATE TESTING)

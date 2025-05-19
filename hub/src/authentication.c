@@ -10,6 +10,12 @@ void generate_timestamp_hub(char* buffer, size_t size)
 
 char* create_client_info_hub(const char* hub_id, int latitude, int longitude)
 {
+    // Validate the hub_id
+    if (!isValidHubId(hub_id))
+    {
+        return NULL; // Invalid hub_id
+    }
+
     cJSON* json_obj = cJSON_CreateObject();
 
     // Generate the current timestamp
