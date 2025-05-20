@@ -88,6 +88,8 @@ PGconn* Database::getConnection(const std::string& connectionString)
                                                       " failed: " + std::string(PQerrorMessage(conn)));
             std::cerr << "[ERROR] Reconnection attempt " << retryCount + 1 << " failed: " << PQerrorMessage(conn)
                       << "\n";
+            PQfinish(conn);
+            conn = nullptr; // <-- Add this line to avoid leaks!
             retryCount++;
             std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Wait before retrying
         }
