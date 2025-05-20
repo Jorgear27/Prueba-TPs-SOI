@@ -38,6 +38,18 @@ runs:
           fi
         done
 
+        for test in $PROJECT_PATH/build/server/tests/*_test; do
+          echo "Running Valgrind on $test"
+          VALGRIND_LOG_FILE=$VALGRIND_LOG_DIR/$(basename $test).log
+          valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --error-exitcode=1 --log-file=$VALGRIND_LOG_FILE $test
+
+          # Check if Valgrind detected any errors
+          if [ $? -ne 0 ]; then
+            echo "Valgrind detected issues in $test. Check $VALGRIND_LOG_FILE for details."
+            ERROR_FLAG=1
+          fi
+        done
+
         # Fail the action if any Valgrind errors were detected
         if [ $ERROR_FLAG -ne 0 ]; then
           echo "Error: Valgrind detected memory issues in one or more tests."
